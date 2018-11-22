@@ -6,6 +6,8 @@ import java.util.*;
 public class Parser {
 
     private HashMap<String, String> months;
+    private HashSet<Character> stopPrefixes;
+    private HashSet<Character> stopPostfixes;
     private HashMap<String, String> stem_collection;
     private LinkedList<String> tokens;
     private LinkedList<String> terms;
@@ -41,6 +43,24 @@ public class Parser {
         months.put("oct", "10");
         months.put("nov", "11");
         months.put("dec", "12");
+        stopPrefixes = new HashSet<>();
+        stopPrefixes.add('.');
+        stopPrefixes.add('-');
+        stopPrefixes.add(',');
+        stopPrefixes.add('/');
+        stopPrefixes.add('\'');
+        stopPrefixes.add('%');
+        stopPrefixes.add(' ');
+        stopPrefixes.add('(');
+        stopPostfixes = new HashSet<>();
+        stopPostfixes.add('.');
+        stopPostfixes.add('-');
+        stopPostfixes.add(',');
+        stopPostfixes.add('/');
+        stopPostfixes.add('\'');
+        stopPostfixes.add('$');
+        stopPostfixes.add(' ');
+        stopPostfixes.add(')');
     }
     
 
@@ -52,7 +72,7 @@ public class Parser {
         String[] splitted = file_path.split("\\\\");
         String fileName = splitted[splitted.length-1];
 
-        System.out.println(fileName);
+//        System.out.println(fileName);
 
         ArrayList<Doc> parsed_docs = new ArrayList<>();
         Iterator<String> lines_iter = lines.iterator();
@@ -87,6 +107,7 @@ public class Parser {
                             else if (line.contains("<TEXT>")){
 
                                 // get tokens
+                                if (line.contains("</TEXT>")) break; // In case text is empty and in same line
                                 tokens = new LinkedList<>();
                                 while (lines_iter.hasNext()) {
                                     line = lines_iter.next();
@@ -110,27 +131,29 @@ public class Parser {
                                             case ')': break;
                                             case '<': break;
                                             case '>': break;
+                                            case '{': break;
+                                            case '}': break;
                                             case '[': break;
                                             case ']': break;
                                             case '#': break;
                                             case '|': break;
+                                            case '&': break;
                                             case ',': break;
                                             case ' ': {
-                                                // Remove ',' '.' '-' only from tail/trail of token
                                                 if (stringBuilder.length() > 0) {
                                                     try {
                                                         char firstChar = stringBuilder.charAt(0);
-                                                        while (firstChar == '.' || firstChar == '-' || firstChar == ',') {
+                                                        while (stopPrefixes.contains(firstChar)) {
                                                             stringBuilder.deleteCharAt(0);
                                                             firstChar = stringBuilder.charAt(0);
                                                         }
                                                         char lastChar = stringBuilder.charAt(stringBuilder.length() - 1);
-                                                        while (lastChar == '.' || lastChar == '-' || lastChar == ',') {
+                                                        while (stopPostfixes.contains(lastChar)) {
                                                             stringBuilder.deleteCharAt(stringBuilder.length() - 1);
                                                             lastChar = stringBuilder.charAt(stringBuilder.length() - 1);
                                                         }
                                                         String token = stringBuilder.toString();
-                                                        if (token.length() != 0 || !stop_words.contains(token)){
+                                                        if (token.length() > 0 && !stop_words.contains(token)){
                                                             tokens.add(stringBuilder.toString());
                                                         }
                                                     } catch (NullPointerException | StringIndexOutOfBoundsException ignored) {}
@@ -146,12 +169,10 @@ public class Parser {
                                 try {
                                     while (true) {
                                         String term = getTerm(tokens.remove(), use_stemming);
-                                        if (term.length() != 0) {
-                                            char firstChar = term.charAt(0);
-                                            if (!(firstChar == '-' || firstChar == '$' || firstChar == '\'')
-                                                    && !stop_words.contains(term.toLowerCase())) { // todo: maybe delete if
-                                                terms.add(term);
-                                            }
+                                        if (term.length() != 0 && !stop_words.contains(term.toLowerCase())) {
+                                            while (stopPrefixes.contains(term.charAt(0)) || stopPostfixes.contains(term.charAt(0)))
+                                                term = term.substring(1);
+                                            terms.add(term);
                                         }
                                     }
                                 } catch (NoSuchElementException | IndexOutOfBoundsException ignored) {}

@@ -59,6 +59,9 @@ public class Indexer {
 
         @Override
         public void run() {
+
+            System.out.println("\ntask " + id);
+
             HashMap<String, LinkedList<ArrayList<String>>> terms_in_docs = new HashMap<>();
             int posting_id = id;
             int fileCount = 0;
@@ -69,11 +72,20 @@ public class Indexer {
                 fileCount += 1;
                 ArrayList<Doc> docs = null;
                 try {
+
+                    long start = System.currentTimeMillis();
+
                     docs = new Parser(stop_words).get_processed_docs(filePath, use_stemmer);
+
+                    long time = System.currentTimeMillis() - start;
+                    System.out.println("parse time: " + time);
+
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
                 if (docs == null) continue;
+
+                long start = System.currentTimeMillis();
 
                 for (Doc doc : docs) {
 
@@ -125,8 +137,14 @@ public class Indexer {
                     documents_in_corpus.add(String.join("|", line));
                 }
 
+                long time = System.currentTimeMillis() - start;
+                System.out.println("    indexing time: " + time);
+
                 // if reached max files per posting
                 if (fileCount == files_per_posting) {
+
+                    start = System.currentTimeMillis();
+
                     fileCount = 0;
                     try {
                         write_posting(posting_id, terms_in_docs);
@@ -135,6 +153,9 @@ public class Indexer {
                     }
                     posting_id += taskCount;
                     terms_in_docs = new HashMap<>();
+
+                    time = System.currentTimeMillis() - start;
+                    System.out.println("        posting time: " + time);
                 }
             }
             // Write last posting
@@ -227,6 +248,9 @@ public class Indexer {
 
         // Run tasks
         ThreadPoolExecutor executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(taskCount);
+//        for (Task task : tasks) {
+//            task.run();
+//        }
         for (Task task : tasks) executor.execute(task);
         try {
             executor.shutdown();
@@ -235,11 +259,15 @@ public class Indexer {
             e.printStackTrace();
         }
 
+        long regStart = System.currentTimeMillis();
+
         this.register_dictionary();
         this.register_documents();
         this.create_city_index();
 
         long time = System.currentTimeMillis() - start;
+        long regTime = System.currentTimeMillis() - regStart;
+        System.out.println("\nregister time: " + regTime);
         System.out.println("time: " + time);
     }
 
@@ -333,22 +361,3 @@ public class Indexer {
         out.close();
     }
 }
-//
-//
-//            if __name__ == '__main__':
-//    start = time.time()
-//
-            // corpus_path = "C:\Users\Jonathan\Documents\BGU\Semester 5\Information Retrieval\corpus"
-//    corpus_path = "C:\Users\Jonathan\Documents\BGU\Semester 5\Information Retrieval\mini"
-            // corpus_path = "C:\Users\Jonathan\Documents\BGU\Semester 5\Information Retrieval\Test"
-//    postings_path = "C:\Users\Jonathan\Documents\BGU\Semester 5\Information Retrieval\Postings"
-//    stop_words_path = "C:\Users\Jonathan\Documents\BGU\Semester 5\Information Retrieval\stop_words.txt"
-//
-//    indexer = Indexer(postings_path, stop_words_path)
-//    indexer.create_inverted_index(corpus_path, True, 10)
-//
-//    end = time.time()
-//    print('')
-//    print str(end-start) + " seconds"
-//
-//}
