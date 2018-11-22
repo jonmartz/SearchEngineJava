@@ -1,8 +1,8 @@
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.HashMap;
 
 public class Cities {
 
-    public static ConcurrentHashMap<String, String[]> get_cities_dictionary() {
+    public static HashMap<String, String[]> get_cities_dictionary() {
         
         String[] list = {"STOCKHOLM","SWEDEN", "SEK", "9.89M","GEORGETOWN","GUYANA", "GYD", "746.9K","WILLEMSTAD",
         "CURASAO", "ANG", "154.84K","KUWAIT CITY","KUWAIT", "KWD", "4.18M","KINGSTON",
@@ -117,7 +117,7 @@ public class Cities {
         "MALDIVES", "MVR", "344.02K","BEIRUT","LEBANON", "LBP", "5.98M","RAMALLAH",
         "PALESTINE, STATE OF", "ILS", "4.68M","VIENNA","AUSTRIA", "EUR", "8.72M",};
 
-        ConcurrentHashMap<String, String[]> map = new ConcurrentHashMap<>();
+        HashMap<String, String[]> map = new HashMap<>();
         String city = "";
         String[] data = new String[3];
         for (int i=0; i < list.length; i++) {
