@@ -62,130 +62,127 @@ public class Parser {
         stopPostfixes.add(' ');
         stopPostfixes.add(')');
     }
-    
+
 
     public ArrayList<Doc> get_processed_docs(String file_path, boolean use_stemming) throws IOException {
 
-        List<String> lines = ReadFile.read(file_path);
-        if (lines == null) return null;
+        ArrayList<Doc> docs = ReadFile.read(file_path);
+        if (docs.size() == 0) return null;
 
         String[] splitted = file_path.split("\\\\");
         String fileName = splitted[splitted.length-1];
 
 //        System.out.println(fileName);
 
-        ArrayList<Doc> parsed_docs = new ArrayList<>();
-        Iterator<String> lines_iter = lines.iterator();
         String line = "";
         StringBuilder stringBuilder = new StringBuilder();
 
-        // find doc
-        while (lines_iter.hasNext()) {
-            line = lines_iter.next();
-            if (line.contains("<DOC>")){
-                Doc doc = new Doc();
-                doc.file = fileName;
-                terms = new LinkedList<>();
+        for (Doc doc : docs) {
+            ArrayList<String> lines = doc.lines;
+            doc.lines = null; // to not pass the doc to indexer with lines, in order to save memory
+            doc.file = fileName;
+            terms = new LinkedList<>();
+            Iterator<String> iterator = lines.iterator();
 
-                // find doc name
-                while (lines_iter.hasNext()) {
-                    line = lines_iter.next();
-                    if (line.contains("<DOCNO>")){
-                        doc.name = line.replace("<DOCNO>", "").replace("</DOCNO>","").trim();
-                        boolean foundCity = false;
+            // find doc name
+            while (iterator.hasNext()) {
+                line = iterator.next();
+                if (line.contains("<DOCNO>")) {
+                    doc.name = line.replace("<DOCNO>", "").replace("</DOCNO>", "").trim();
+                    boolean foundCity = false;
 
-                        // find text
-                        while (lines_iter.hasNext()) {
-                            line = lines_iter.next();
-                            // find city
-                            if (!foundCity && line.contains("<F P=104>")) {
-                                foundCity = true;
-                                splitted = line.replace("<F P=104>", "").replace("</F P=104>", "").trim().split(" ");
-                                doc.city = splitted[0].toUpperCase();
-                                terms.add(doc.city);
-                            }
-                            else if (line.contains("<TEXT>")){
+                    // find text
+                    while (iterator.hasNext()) {
+                        line = iterator.next();
+                        // find city
+                        if (!foundCity && line.contains("<F P=104>")) {
+                            foundCity = true;
+                            splitted = line.replace("<F P=104>", "").replace("</F P=104>", "").trim().split(" ");
+                            doc.city = splitted[0].toUpperCase();
+                            terms.add(doc.city);
 
-                                // get tokens
-                                if (line.contains("</TEXT>")) break; // In case text is empty and in same line
-                                tokens = new LinkedList<>();
-                                while (lines_iter.hasNext()) {
-                                    line = lines_iter.next();
-                                    if (line.trim().length() == 0) continue;
-                                    if (line.contains("</TEXT>")) break;
-                                    // Add tokens without symbols
-                                    line = line.trim().concat(" "); // Add one space at end to ensure last token is taken
-                                    int length = line.length();
-                                    for (int i = 0; i < length; i++) {
-                                        char character = line.charAt(i);
-                                        switch(character) {
-                                            case '!': break;
-                                            case '@': break;
-                                            case ';': break;
-                                            case '+': break;
-                                            case ':': break;
-                                            case '?': break;
-                                            case '"': break;
-                                            case '*': break;
-                                            case '(': break;
-                                            case ')': break;
-                                            case '<': break;
-                                            case '>': break;
-                                            case '{': break;
-                                            case '}': break;
-                                            case '[': break;
-                                            case ']': break;
-                                            case '#': break;
-                                            case '|': break;
-                                            case '&': break;
-                                            case ',': break;
-                                            case ' ': {
-                                                if (stringBuilder.length() > 0) {
-                                                    try {
-                                                        char firstChar = stringBuilder.charAt(0);
-                                                        while (stopPrefixes.contains(firstChar)) {
-                                                            stringBuilder.deleteCharAt(0);
-                                                            firstChar = stringBuilder.charAt(0);
-                                                        }
-                                                        char lastChar = stringBuilder.charAt(stringBuilder.length() - 1);
-                                                        while (stopPostfixes.contains(lastChar)) {
-                                                            stringBuilder.deleteCharAt(stringBuilder.length() - 1);
-                                                            lastChar = stringBuilder.charAt(stringBuilder.length() - 1);
-                                                        }
-                                                        String token = stringBuilder.toString();
-                                                        if (token.length() > 0 && !stop_words.contains(token)){
-                                                            tokens.add(stringBuilder.toString());
-                                                        }
-                                                    } catch (NullPointerException | StringIndexOutOfBoundsException ignored) {}
-                                                    stringBuilder = new StringBuilder();
+                        } // get tokens
+                        else if (line.contains("<TEXT>")) {
+                            if (line.contains("</TEXT>")) break; // In case text is empty and in same line
+                            tokens = new LinkedList<>();
+                            while (iterator.hasNext()) {
+                                line = iterator.next();
+                                if (line.trim().length() == 0) continue;
+                                if (line.contains("</TEXT>")) break;
+                                // Add tokens without symbols
+                                line = line.trim().concat(" "); // Add one space at end to ensure last token is taken
+                                int length = line.length();
+                                for (int i = 0; i < length; i++) {
+                                    char character = line.charAt(i);
+                                    switch (character) {
+                                        case '!': break;
+                                        case '@': break;
+                                        case ';': break;
+                                        case '+': break;
+                                        case ':': break;
+                                        case '?': break;
+                                        case '"': break;
+                                        case '*': break;
+                                        case '(': break;
+                                        case ')': break;
+                                        case '<': break;
+                                        case '>': break;
+                                        case '{': break;
+                                        case '}': break;
+                                        case '[': break;
+                                        case ']': break;
+                                        case '#': break;
+                                        case '|': break;
+                                        case '&': break;
+                                        case ',': break;
+                                        case ' ': {
+                                            if (stringBuilder.length() > 0) {
+                                                try {
+                                                    char firstChar = stringBuilder.charAt(0);
+                                                    while (stopPrefixes.contains(firstChar)) {
+                                                        stringBuilder.deleteCharAt(0);
+                                                        firstChar = stringBuilder.charAt(0);
+                                                    }
+                                                    char lastChar = stringBuilder.charAt(stringBuilder.length() - 1);
+                                                    while (stopPostfixes.contains(lastChar)) {
+                                                        stringBuilder.deleteCharAt(stringBuilder.length() - 1);
+                                                        lastChar = stringBuilder.charAt(stringBuilder.length() - 1);
+                                                    }
+                                                    String token = stringBuilder.toString();
+                                                    if (token.length() > 0 && !stop_words.contains(token)) {
+                                                        tokens.add(stringBuilder.toString());
+                                                    }
+                                                } catch (NullPointerException | StringIndexOutOfBoundsException ignored) {
                                                 }
-                                            } break;
-                                            default: stringBuilder.append(character);
+                                                stringBuilder = new StringBuilder();
+                                            }
                                         }
+                                        break;
+                                        default:
+                                            stringBuilder.append(character);
                                     }
                                 }
-
-                                // Get terms
-                                try {
-                                    while (true) {
-                                        String term = getTerm(tokens.remove(), use_stemming);
-                                        if (term.length() != 0 && !stop_words.contains(term.toLowerCase())) {
-                                            while (stopPrefixes.contains(term.charAt(0)) || stopPostfixes.contains(term.charAt(0)))
-                                                term = term.substring(1);
-                                            terms.add(term);
-                                        }
-                                    }
-                                } catch (NoSuchElementException | IndexOutOfBoundsException ignored) {}
-                                doc.terms = terms;
-                                parsed_docs.add(doc);
-                                break; // break from "find text" loop
                             }
-                        } break; // break from "find doc name" loop
+
+                            // Get terms
+                            try {
+                                while (true) {
+                                    String term = getTerm(tokens.remove(), use_stemming);
+                                    if (term.length() != 0 && !stop_words.contains(term.toLowerCase())) {
+                                        while (stopPrefixes.contains(term.charAt(0)) || stopPostfixes.contains(term.charAt(0)))
+                                            term = term.substring(1);
+                                        terms.add(term);
+                                    }
+                                }
+                            } catch (NoSuchElementException | IndexOutOfBoundsException ignored) {}
+                            doc.terms = terms;
+                            break; // break from "find text" loop
+                        }
                     }
                 }
             }
         }
-        return parsed_docs;
+        return docs;
     }
 
     private String getTerm(String token, boolean use_stemming) throws IndexOutOfBoundsException {
@@ -236,75 +233,75 @@ public class Parser {
 
     private String process_number(String token, boolean is_dollar){
         String next_token = "";
-            try {
-                if (token.contains("/")) {
-                    String[] nums = token.split("/");
-                    Float.parseFloat(nums[0]);
-                    Float.parseFloat(nums[1]);
-                    return token;
-                } else {
-                    float number = Float.parseFloat(token);
-                    String fraction = "";
-                    try {
-                        next_token = tokens.remove().toLowerCase();
-                        // Add fraction
-                        if (next_token.contains("/")) {
-                            String[] nums = next_token.split("/");
-                            Float.parseFloat(nums[0]);
-                            Float.parseFloat(nums[1]);
-                            fraction = " " + next_token;
-                        }
+        try {
+            if (token.contains("/")) {
+                String[] nums = token.split("/");
+                Float.parseFloat(nums[0]);
+                Float.parseFloat(nums[1]);
+                return token;
+            } else {
+                float number = Float.parseFloat(token);
+                String fraction = "";
+                try {
+                    next_token = tokens.remove().toLowerCase();
+                    // Add fraction
+                    if (next_token.contains("/")) {
+                        String[] nums = next_token.split("/");
+                        Float.parseFloat(nums[0]);
+                        Float.parseFloat(nums[1]);
+                        fraction = " " + next_token;
+                    }
 //                        try {
 //                            Float.parseFloat(next_token);
 //                            tokens.addFirst(next_token);
 //                        } catch (NumberFormatException e) {
-                        else if (!Character.isDigit(next_token.charAt(0))){
-                            long factor = 1L;
-                            switch (next_token) {
-                                case "hundred":
-                                    factor = 100L; break;
-                                case "thousand":
-                                    factor = 1000L; break;
-                                case "million":
-                                    factor = 1000000L; break;
-                                case "billion":
-                                    factor = 1000000000L; break;
-                                case "trillion":
-                                    factor = 1000000000000L; break;
-                                default:
-                                    tokens.addFirst(next_token);
-                            }
-                            number = number * factor;
-                        } else tokens.addFirst(next_token);
-                    } catch (NoSuchElementException | IndexOutOfBoundsException ignored) {
-                        if (next_token.length() != 0) tokens.addFirst(next_token);
-                    }
-                    // Convert to standard form
-                    String letter = "";
-                    if (!is_dollar) {
-                        if (number < 1000L) {}
-                        else if (number < 1000000L) {
-                            number = number / 1000L;
-                            letter = "K";
-                        } else if (number < 1000000000L) {
-                            number = number / 1000000L;
-                            letter = "M";
-                        } else {
-                            number = number / 1000000000L;
-                            letter = "B";
+                    else if (!Character.isDigit(next_token.charAt(0))){
+                        long factor = 1L;
+                        switch (next_token) {
+                            case "hundred":
+                                factor = 100L; break;
+                            case "thousand":
+                                factor = 1000L; break;
+                            case "million":
+                                factor = 1000000L; break;
+                            case "billion":
+                                factor = 1000000000L; break;
+                            case "trillion":
+                                factor = 1000000000000L; break;
+                            default:
+                                tokens.addFirst(next_token);
                         }
-                    } else if (number >= 1000000L) {
-                        number = number / 1000000L;
-                        letter = " M";
-                    }
-                    if (number == Math.round(number)) return (int)number + letter + fraction;
-                    return number + letter + fraction;
+                        number = number * factor;
+                    } else tokens.addFirst(next_token);
+                } catch (NoSuchElementException | IndexOutOfBoundsException ignored) {
+                    if (next_token.length() != 0) tokens.addFirst(next_token);
                 }
-            }catch (NumberFormatException | IndexOutOfBoundsException e) {
-                return "";
+                // Convert to standard form
+                String letter = "";
+                if (!is_dollar) {
+                    if (number < 1000L) {}
+                    else if (number < 1000000L) {
+                        number = number / 1000L;
+                        letter = "K";
+                    } else if (number < 1000000000L) {
+                        number = number / 1000000L;
+                        letter = "M";
+                    } else {
+                        number = number / 1000000000L;
+                        letter = "B";
+                    }
+                } else if (number >= 1000000L) {
+                    number = number / 1000000L;
+                    letter = " M";
+                }
+                if (number == Math.round(number)) return (int)number + letter + fraction;
+                return number + letter + fraction;
             }
+        }catch (NumberFormatException | IndexOutOfBoundsException e) {
+            return "";
         }
-        
+    }
+
     private String process_percentage(String token) {
         try {
             if (token.endsWith("%")) {
@@ -434,7 +431,7 @@ public class Parser {
             return "";
         }
     }
-    
+
     private String process_range_or_expression(String token) {
         String next_token = "";
         String next_next_token = "";
