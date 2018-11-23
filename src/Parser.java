@@ -52,6 +52,8 @@ public class Parser {
         stopPrefixes.add('%');
         stopPrefixes.add(' ');
         stopPrefixes.add('(');
+        stopPrefixes.add('<');
+        stopPrefixes.add('=');
         stopPostfixes = new HashSet<>();
         stopPostfixes.add('.');
         stopPostfixes.add('-');
@@ -61,6 +63,8 @@ public class Parser {
         stopPostfixes.add('$');
         stopPostfixes.add(' ');
         stopPostfixes.add(')');
+        stopPostfixes.add('>');
+        stopPostfixes.add('=');
     }
 
 
@@ -130,6 +134,7 @@ public class Parser {
                                         case '>': break;
                                         case '{': break;
                                         case '}': break;
+                                        case '=': break;
                                         case '[': break;
                                         case ']': break;
                                         case '#': break;

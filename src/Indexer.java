@@ -112,9 +112,8 @@ public class Indexer {
                         }
                         position++;
                     }
-                    // todo: add doc offset
-                    String[] line = {doc.name, doc.file, "beginning", "end", String.valueOf(position),
-                            String.valueOf(max_term_frequency), doc.city, "\n"};
+                    String[] line = {doc.name, doc.file, String.valueOf(doc.beginning), String.valueOf(doc.end),
+                            String.valueOf(position), String.valueOf(max_term_frequency), doc.city, "\n"};
                     documents_in_corpus.add(String.join("|", line));
                 }
 
@@ -244,7 +243,6 @@ public class Indexer {
 
         register_documents();
         create_city_index();
-//        register_dictionary(); //todo: delete this
 
         // Free up memory for merging
         documents_in_corpus.clear();
@@ -358,6 +356,7 @@ public class Indexer {
         }
         for (int i = 0; i < chars.length(); i++){
             char character = chars.charAt(i);
+
             // Map the terms found to their postings
             HashMap<String, ArrayList<String>> terms = new HashMap<>();
             for (RandomAccessFile posting : postings){
