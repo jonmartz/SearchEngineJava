@@ -98,7 +98,8 @@ public class Parser {
                         if (!foundCity && line.contains("<F P=104>")) {
                             foundCity = true;
                             splitted = line.replace("<F P=104>", "").replace("</F P=104>", "").trim().split(" ");
-                            doc.city = splitted[0].toUpperCase();
+                            String city = splitted[0].replace("(","").replace(")","");
+                            doc.city = city.toUpperCase();
                             terms.add(doc.city);
 
                         } // get tokens
@@ -251,10 +252,6 @@ public class Parser {
                         Float.parseFloat(nums[1]);
                         fraction = " " + next_token;
                     }
-//                        try {
-//                            Float.parseFloat(next_token);
-//                            tokens.addFirst(next_token);
-//                        } catch (NumberFormatException e) {
                     else if (!Character.isDigit(next_token.charAt(0))){
                         long factor = 1L;
                         switch (next_token) {

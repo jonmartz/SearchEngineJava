@@ -19,39 +19,29 @@ public class ReadFile {
 
         ArrayList<Doc> docsInFile = new ArrayList<>();
         File file = new File(path);
-        BufferedReader reader = null;
-
-        try {
-            reader = new BufferedReader(new FileReader(file));
-            String line = null;
-            int lineNumber = 0;
-            while ((line = reader.readLine()) != null) {
-                if (line.contains("<DOC>")) {
-                    int beginning = lineNumber;
-                    ArrayList<String> lines = new ArrayList<>();
-                    while (!line.contains("</DOC>")){
-                        line = reader.readLine();
-                        lines.add(line.trim());
-                        lineNumber++;
-                    }
-                    int end = lineNumber;
-                    Doc doc = new Doc();
-                    doc.beginning = beginning;
-                    doc.end = end;
-                    doc.lines = lines;
-                    docsInFile.add(doc);
+        BufferedReader reader = new BufferedReader(new FileReader(file));
+        String line = null;
+        int lineNumber = 0;
+        while ((line = reader.readLine()) != null) {
+            if (line.contains("<DOC>")) {
+                int beginning = lineNumber;
+                ArrayList<String> lines = new ArrayList<>();
+                while (!line.contains("</DOC>")){
+                    line = reader.readLine();
+                    lines.add(line.trim());
+                    lineNumber++;
                 }
-                lineNumber++;
+                int end = lineNumber;
+                Doc doc = new Doc();
+                doc.beginning = beginning;
+                doc.end = end;
+                doc.lines = lines;
+                docsInFile.add(doc);
             }
-        } catch (IOException e) {
-            e.printStackTrace();
-        } finally {
-            try {
-                if (reader != null) {
-                    reader.close();
-                }
-            } catch (IOException ignored) { }
+            lineNumber++;
         }
+        reader.close();
+
         return docsInFile;
     }
 }

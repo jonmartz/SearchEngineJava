@@ -1,7 +1,4 @@
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
 import java.nio.charset.Charset;
 import java.nio.charset.MalformedInputException;
 import java.nio.file.*;
@@ -19,6 +16,7 @@ public class Indexer {
     private boolean use_stemmer;
     private int files_per_posting;
     private int taskCount;
+    private int postingsCount;
 
     public Indexer(String postings_path, String stop_words_path) {
         this.index_path = postings_path;
@@ -244,13 +242,18 @@ public class Indexer {
 
         long regStart = System.currentTimeMillis();
 
-        this.register_dictionary();
-        this.register_documents();
-        this.create_city_index();
+        register_documents();
+        create_city_index();
+//        register_dictionary(); //todo: delete this
+
+        // Free up memory for merging
+        documents_in_corpus.clear();
+        cities_of_docs.clear();
+
+        mergePostings();
+        register_dictionary();
 
         long time = System.currentTimeMillis() - start;
-        long regTime = System.currentTimeMillis() - regStart;
-        System.out.println("\nregister time: " + regTime);
         System.out.println("time: " + time);
     }
 
@@ -270,7 +273,7 @@ public class Indexer {
                 String doc_name = iterator.next();
                 StringBuilder positions = new StringBuilder();
                 positions.append(iterator.next()); // first position without " "
-                int tf = 0;
+                int tf = 1;
                 while (iterator.hasNext()) {
                     positions.append(" ").append(iterator.next());
                     tf++;
@@ -292,6 +295,7 @@ public class Indexer {
             }
         }
         out.close();
+        postingsCount++;
     }
 
     private String setup_upper_lower_letters(String term, AbstractMap dictionary) {
@@ -327,11 +331,11 @@ public class Indexer {
         SortedSet<String> terms = new TreeSet<>(dictionary.keySet());
         for (String term : terms) {
             long[] term_data = dictionary.get(term);
-            String[] line = new String[term_data.length + 2];
+            String[] line = new String[term_data.length + 1];
             line[0] = term;
-            for (int i = 0; i < term_data.length; i++) line[i + 1] = Long.toString(term_data[i]);
-            line[line.length - 1] = "\n";
-            out.write(String.join("|", line));
+            line[1] = Long.toString(term_data[0]);
+            line[2] = Long.toString(term_data[1]);
+            out.write(String.join("|", line) + "\n");
         }
         out.close();
     }
@@ -342,5 +346,62 @@ public class Indexer {
         BufferedWriter out = new BufferedWriter(fstream);
         for (String line : documents_in_corpus) out.write(line);
         out.close();
+    }
+
+    private void mergePostings() throws IOException {
+        new File(index_path + "\\postings\\merged").mkdirs();
+        String chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+        ArrayList<RandomAccessFile> postings = new ArrayList<>();
+        for (int id = 0; id < postingsCount; id++){
+            RandomAccessFile posting = new RandomAccessFile(index_path + "\\postings\\" + id, "r");
+            postings.add(posting);
+        }
+        for (int i = 0; i < chars.length(); i++){
+            char character = chars.charAt(i);
+            // Map the terms found to their postings
+            HashMap<String, ArrayList<String>> terms = new HashMap<>();
+            for (RandomAccessFile posting : postings){
+                long lastOffset = posting.getFilePointer(); // to return to term in case character != term.charAt(0)
+                String term = posting.readLine();
+                while (term != null && character == term.charAt(0)) {
+                    term = term.trim();
+                    ArrayList<String> termPostings = terms.get(term);
+                    if (termPostings == null) {
+                        termPostings = new ArrayList<>();
+                        terms.put(term, termPostings);
+                    }
+                    String line = posting.readLine();
+                    while (line != null && !line.equals("")){
+                        termPostings.add(line);
+                        line = posting.readLine();
+                    }
+                    if (line == null) break;
+                    lastOffset = posting.getFilePointer();
+                    term = posting.readLine();
+                }
+                posting.seek(lastOffset);
+            }
+            String id = String.valueOf(character);
+            if (Character.isUpperCase(character)) id += "_";
+            String path = index_path + "\\postings\\merged\\" + id;
+            RandomAccessFile mergedPosting = new RandomAccessFile(path, "rw");
+            for (Map.Entry<String, ArrayList<String>> entry : terms.entrySet())
+            {
+                String term = entry.getKey();
+                long[] termData = dictionary.get(term);
+                if (termData == null){ // term was found in lower case AFTER we wrote it to the temporal posting
+                    term = term.toLowerCase();
+                    termData = dictionary.get(term);
+                }
+                mergedPosting.writeBytes(term + "\n");
+                termData[1] = mergedPosting.getFilePointer();
+                for (String line : entry.getValue()){
+                    mergedPosting.writeBytes(line + "\n");
+                }
+                mergedPosting.writeBytes("\n");
+            }
+            mergedPosting.close();
+        }
+        for (RandomAccessFile posting : postings) posting.close();
     }
 }
