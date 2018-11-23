@@ -28,6 +28,121 @@ public class Indexer {
         this.stop_words = getStopWords(stop_words_path);
     }
 
+    public void create_inverted_index(String corpus_path, boolean use_stemmer, int files_per_posting) throws IOException {
+
+        long start = System.currentTimeMillis();
+
+        this.files_per_posting = files_per_posting;
+        this.use_stemmer = use_stemmer;
+        documents_in_corpus = new ArrayList<>();
+        dictionary = new HashMap<>();
+        cities_of_docs = new HashMap<>();
+
+        // Create postings dir
+        Path directory = Paths.get(index_path);
+        if (Files.exists(directory)) {
+            removeDir(directory);
+        }
+        new File(index_path).mkdirs();
+        new File(index_path + "\\postings").mkdirs();
+
+        this.taskCount = Runtime.getRuntime().availableProcessors() + 1;
+        Task[] tasks = new Task[taskCount];
+
+        // Create tasks
+        for (int id = 0; id < taskCount; id++) {
+            tasks[id] = new Task(id);
+        }
+
+        // Walk through files
+        List<String> filePaths = new ArrayList<>();
+        walk(corpus_path, filePaths);
+        int i = 0;
+        for (String filePath : filePaths) {
+            tasks[i].filePaths.add(filePath);
+            i++;
+            if (i == taskCount) i = 0;
+        }
+
+        // Run tasks
+//        ThreadPoolExecutor executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(taskCount);
+        for (Task task : tasks) {
+
+            long taskStart = System.currentTimeMillis();
+
+            task.run();
+
+            long taskTime = System.currentTimeMillis() - taskStart;
+            System.out.println("task time: " + taskTime);
+        }
+//        for (Task task : tasks) executor.execute(task);
+//        try {
+//            executor.shutdown();
+//            executor.awaitTermination(1, TimeUnit.HOURS);
+//        } catch (InterruptedException e) {
+//            e.printStackTrace();
+//        }
+
+        register_documents();
+        create_city_index();
+
+        // Free up memory for merging
+        documents_in_corpus.clear();
+        cities_of_docs.clear();
+        register_dictionary(); //todo: remove
+
+        long mergeStart = System.currentTimeMillis();
+
+        new Merger().run();
+
+        long mergeTime = System.currentTimeMillis() - mergeStart;
+        System.out.println("\nmerge time: " + mergeTime);
+
+        register_dictionary();
+
+        long time = System.currentTimeMillis() - start;
+        System.out.println("total time: " + time);
+    }
+
+    private static HashSet<String> getStopWords(String path) {
+        try {
+            List<String> lines = Files.readAllLines(Paths.get(path), Charset.defaultCharset());
+            HashSet<String> stopWords = new HashSet<>();
+            for (String line : lines) {
+                stopWords.add(line.trim());
+            }
+            return stopWords;
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    private void removeDir(Path directory) throws IOException {
+        Files.walkFileTree(directory, new SimpleFileVisitor<Path>() {
+            @Override
+            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                Files.delete(file);
+                return FileVisitResult.CONTINUE;
+            }
+
+            @Override
+            public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+                Files.delete(dir);
+                return FileVisitResult.CONTINUE;
+            }
+        });
+    }
+
+    private void walk(String path, List<String> filePaths) {
+        File root = new File(path);
+        File[] list = root.listFiles();
+        for (File file : list) {
+            if (file.isDirectory()) walk(file.getAbsolutePath(), filePaths);
+            else filePaths.add(file.getAbsolutePath());
+        }
+    }
+
     private class Task implements Runnable {
 
         private int id;
@@ -54,19 +169,19 @@ public class Indexer {
                 ArrayList<Doc> docs = null;
                 try {
 
-                    long start = System.currentTimeMillis();
+//                    long start = System.currentTimeMillis();
 
                     docs = new Parser(stop_words).get_processed_docs(filePath, use_stemmer);
 
-                    long time = System.currentTimeMillis() - start;
-                    System.out.println("parse time: " + time);
+//                    long time = System.currentTimeMillis() - start;
+//                    System.out.println("parse time: " + time);
 
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
                 if (docs == null) continue;
 
-                long start = System.currentTimeMillis();
+//                long start = System.currentTimeMillis();
 
                 for (Doc doc : docs) {
 
@@ -117,13 +232,13 @@ public class Indexer {
                     documents_in_corpus.add(String.join("|", line));
                 }
 
-                long time = System.currentTimeMillis() - start;
-                System.out.println("    indexing time: " + time);
+//                long time = System.currentTimeMillis() - start;
+//                System.out.println("    indexing time: " + time);
 
                 // if reached max files per posting
                 if (fileCount == files_per_posting) {
 
-                    start = System.currentTimeMillis();
+//                    start = System.currentTimeMillis();
 
                     fileCount = 0;
                     try {
@@ -134,8 +249,8 @@ public class Indexer {
                     posting_id += taskCount;
                     terms_in_docs = new HashMap<>();
 
-                    time = System.currentTimeMillis() - start;
-                    System.out.println("        posting time: " + time);
+//                    time = System.currentTimeMillis() - start;
+//                    System.out.println("        posting time: " + time);
                 }
             }
             // Write last posting
@@ -145,114 +260,8 @@ public class Indexer {
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
-                posting_id += fileCount;
             }
-//            System.out.println("task finished");
         }
-    }
-
-    private static HashSet<String> getStopWords(String path) {
-        try {
-            List<String> lines = Files.readAllLines(Paths.get(path), Charset.defaultCharset());
-            HashSet<String> stopWords = new HashSet<>();
-            for (String line : lines) {
-                stopWords.add(line.trim());
-            }
-            return stopWords;
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return null;
-    }
-
-    private void removeDir(Path directory) throws IOException {
-        Files.walkFileTree(directory, new SimpleFileVisitor<Path>() {
-            @Override
-            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                Files.delete(file);
-                return FileVisitResult.CONTINUE;
-            }
-
-            @Override
-            public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
-                Files.delete(dir);
-                return FileVisitResult.CONTINUE;
-            }
-        });
-    }
-
-    private void walk(String path, List<String> filePaths) {
-        File root = new File(path);
-        File[] list = root.listFiles();
-        for (File file : list) {
-            if (file.isDirectory()) walk(file.getAbsolutePath(), filePaths);
-            else filePaths.add(file.getAbsolutePath());
-        }
-    }
-
-    public void create_inverted_index(String corpus_path, boolean use_stemmer, int files_per_posting) throws IOException {
-
-        long start = System.currentTimeMillis();
-
-        this.files_per_posting = files_per_posting;
-        this.use_stemmer = use_stemmer;
-        documents_in_corpus = new ArrayList<>();
-        dictionary = new HashMap<>();
-        cities_of_docs = new HashMap<>();
-
-        // Create postings dir
-        Path directory = Paths.get(index_path);
-        if (Files.exists(directory)) {
-            removeDir(directory);
-        }
-        new File(index_path).mkdirs();
-        new File(index_path + "\\postings").mkdirs();
-
-        this.taskCount = Runtime.getRuntime().availableProcessors() + 1;
-        Task[] tasks = new Task[taskCount];
-
-        // Create tasks
-        for (int id = 0; id < taskCount; id++) {
-            tasks[id] = new Task(id);
-        }
-
-        // Walk through files
-        List<String> filePaths = new ArrayList<>();
-        walk(corpus_path, filePaths);
-        int i = 0;
-        for (String filePath : filePaths) {
-            tasks[i].filePaths.add(filePath);
-            i++;
-            if (i == taskCount) i = 0;
-        }
-
-        // Run tasks
-//        ThreadPoolExecutor executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(taskCount);
-        for (Task task : tasks) {
-            task.run();
-        }
-//        for (Task task : tasks) executor.execute(task);
-//        try {
-//            executor.shutdown();
-//            executor.awaitTermination(1, TimeUnit.HOURS);
-//        } catch (InterruptedException e) {
-//            e.printStackTrace();
-//        }
-
-        long regStart = System.currentTimeMillis();
-
-        register_documents();
-        create_city_index();
-
-        // Free up memory for merging
-        documents_in_corpus.clear();
-        cities_of_docs.clear();
-
-        mergePostings();
-        register_dictionary();
-
-        long time = System.currentTimeMillis() - start;
-        System.out.println("time: " + time);
     }
 
     synchronized private void write_posting(int posting_id, HashMap<String, LinkedList<ArrayList<String>>> terms_in_docs) throws IOException {
@@ -306,6 +315,84 @@ public class Indexer {
         return term;
     }
 
+    private class Merger implements Runnable {
+
+        @Override
+        public void run() {
+            try {
+                mergePostings();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+        private void mergePostings() throws IOException {
+            new File(index_path + "\\postings\\merged").mkdirs();
+            String chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+            ArrayList<RandomAccessFile> postings = new ArrayList<>();
+            for (int id = 0; id < postingsCount; id++){
+                RandomAccessFile posting = new RandomAccessFile(index_path + "\\postings\\" + id, "r");
+                postings.add(posting);
+            }
+            for (int i = 0; i < chars.length(); i++){
+                char character = chars.charAt(i);
+
+                // Map the terms found to their postings
+                HashMap<String, ArrayList<String>> terms = new HashMap<>();
+                int j = 0;
+                for (RandomAccessFile posting : postings){
+
+                    System.out.println(j++);
+
+                    long lastOffset = posting.getFilePointer(); // to return to term in case character != term.charAt(0)
+                    String term = posting.readLine();
+                    while (term != null && character == term.charAt(0)) {
+                        term = term.trim();
+                        ArrayList<String> termPostings = terms.get(term);
+                        if (termPostings == null) {
+                            termPostings = new ArrayList<>();
+                            terms.put(term, termPostings);
+                        }
+                        String line = posting.readLine();
+                        while (line != null && !line.equals("")){
+                            termPostings.add(line);
+                            line = posting.readLine();
+                        }
+                        if (line == null) break;
+                        lastOffset = posting.getFilePointer();
+                        term = posting.readLine();
+                    }
+                    posting.seek(lastOffset);
+                }
+
+                // Write the term's postings
+                String id = String.valueOf(character);
+                if (Character.isUpperCase(character)) id += "_";
+                String path = index_path + "\\postings\\merged\\" + id;
+                RandomAccessFile mergedPosting = new RandomAccessFile(path, "rw");
+                for (Map.Entry<String, ArrayList<String>> entry : terms.entrySet())
+                {
+                    String term = entry.getKey();
+                    long[] termData = dictionary.get(term);
+                    if (termData == null){ // term was found in lower case AFTER we wrote it to the temporal posting
+                        term = term.toLowerCase();
+                        termData = dictionary.get(term);
+                    }
+                    if (termData != null) { // in case term has weird characters so it's not in dictionary, ignore.
+                        mergedPosting.writeBytes(term + "\n");
+                        termData[1] = mergedPosting.getFilePointer();
+                        for (String line : entry.getValue()) {
+                            mergedPosting.writeBytes(line + "\n");
+                        }
+                        mergedPosting.writeBytes("\n");
+                    }
+                }
+                mergedPosting.close();
+            }
+            for (RandomAccessFile posting : postings) posting.close();
+        }
+    }
+
     private void create_city_index() throws IOException {
         String[] citiesPath = {index_path, "cities"};
         FileWriter fstream = new FileWriter(String.join("\\", citiesPath), true);
@@ -344,63 +431,5 @@ public class Indexer {
         BufferedWriter out = new BufferedWriter(fstream);
         for (String line : documents_in_corpus) out.write(line);
         out.close();
-    }
-
-    private void mergePostings() throws IOException {
-        new File(index_path + "\\postings\\merged").mkdirs();
-        String chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-        ArrayList<RandomAccessFile> postings = new ArrayList<>();
-        for (int id = 0; id < postingsCount; id++){
-            RandomAccessFile posting = new RandomAccessFile(index_path + "\\postings\\" + id, "r");
-            postings.add(posting);
-        }
-        for (int i = 0; i < chars.length(); i++){
-            char character = chars.charAt(i);
-
-            // Map the terms found to their postings
-            HashMap<String, ArrayList<String>> terms = new HashMap<>();
-            for (RandomAccessFile posting : postings){
-                long lastOffset = posting.getFilePointer(); // to return to term in case character != term.charAt(0)
-                String term = posting.readLine();
-                while (term != null && character == term.charAt(0)) {
-                    term = term.trim();
-                    ArrayList<String> termPostings = terms.get(term);
-                    if (termPostings == null) {
-                        termPostings = new ArrayList<>();
-                        terms.put(term, termPostings);
-                    }
-                    String line = posting.readLine();
-                    while (line != null && !line.equals("")){
-                        termPostings.add(line);
-                        line = posting.readLine();
-                    }
-                    if (line == null) break;
-                    lastOffset = posting.getFilePointer();
-                    term = posting.readLine();
-                }
-                posting.seek(lastOffset);
-            }
-            String id = String.valueOf(character);
-            if (Character.isUpperCase(character)) id += "_";
-            String path = index_path + "\\postings\\merged\\" + id;
-            RandomAccessFile mergedPosting = new RandomAccessFile(path, "rw");
-            for (Map.Entry<String, ArrayList<String>> entry : terms.entrySet())
-            {
-                String term = entry.getKey();
-                long[] termData = dictionary.get(term);
-                if (termData == null){ // term was found in lower case AFTER we wrote it to the temporal posting
-                    term = term.toLowerCase();
-                    termData = dictionary.get(term);
-                }
-                mergedPosting.writeBytes(term + "\n");
-                termData[1] = mergedPosting.getFilePointer();
-                for (String line : entry.getValue()){
-                    mergedPosting.writeBytes(line + "\n");
-                }
-                mergedPosting.writeBytes("\n");
-            }
-            mergedPosting.close();
-        }
-        for (RandomAccessFile posting : postings) posting.close();
     }
 }

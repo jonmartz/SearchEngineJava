@@ -103,10 +103,10 @@ public class Parser {
                             foundCity = true;
                             splitted = line.replace("<F P=104>", "").replace("</F>", "").trim().split(" ");
                             String city = splitted[0];
+                            city = cleanTerm(city).toUpperCase();
                             if (city.length() > 0) {
-                                city = cleanTerm(city);
-                                doc.city = city.toUpperCase();
-                                terms.add(doc.city);
+                                doc.city = city;
+                                terms.add(city);
                             }
 
                         } // get tokens
@@ -178,14 +178,10 @@ public class Parser {
                             try {
                                 while (true) {
                                     String term = getTerm(tokens.remove(), use_stemming);
-                                    if (term.length() != 0 && !stop_words.contains(term.toLowerCase())) {
-                                        term = cleanTerm(term);
-                                        if (term.length() > 0) {
-                                            if (!(Character.isAlphabetic(term.charAt(0)) || Character.isDigit(term.charAt(0))))
-                                                System.out.println(term);
-                                            terms.add(term);
-                                        }
-                                    }
+//                                    if (term.length() > 0 && !stop_words.contains(term.toLowerCase())) {
+                                    term = cleanTerm(term);
+                                    if (term.length() > 0 && !stop_words.contains(term.toLowerCase()))
+                                        terms.add(term);
                                 }
                             } catch (NoSuchElementException | IndexOutOfBoundsException ignored) {}
                             doc.terms = terms;
@@ -241,18 +237,17 @@ public class Parser {
                 }
             }
         }
-        if (term.length() != 0) return term;
+        if (term.length() > 0) return term;
         // In case term type is not of any case from above:
         boolean upper = false;
         if (Character.isUpperCase(token.charAt(0))) upper = true;
         if (use_stemming) {
             String stem = stem_collection.get(token.toLowerCase());
-            if (stem != null) {
-                token = stem;
-                String stemmed_term = stemmer.stem(token);
-                stem_collection.put(token.toLowerCase(), stemmed_term);
-                token = stemmed_term;
+            if (stem == null){
+                stem = stemmer.stem(token);
+                stem_collection.put(token.toLowerCase(), stem);
             }
+            token = stem;
         }
         if (upper) token = token.toUpperCase();
         return token;
