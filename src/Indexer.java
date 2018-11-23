@@ -1,17 +1,17 @@
 import java.io.*;
 import java.nio.charset.Charset;
-import java.nio.charset.MalformedInputException;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.*;
+import java.util.concurrent.*;
 
 public class Indexer {
 
     private HashSet<String> stop_words;
     private HashMap<String, String[]> cities_dictionary;
-    private HashMap<String, String[]> cities_of_docs;
-    private HashMap<String, long[]> dictionary;
-    private ArrayList<String> documents_in_corpus;
+    private ConcurrentHashMap<String, String[]> cities_of_docs;
+    private ConcurrentHashMap<String, long[]> dictionary;
+    private BlockingDeque<String> documents_in_corpus;
     private String index_path;
     private boolean use_stemmer;
     private int files_per_posting;
@@ -20,9 +20,9 @@ public class Indexer {
 
     public Indexer(String postings_path, String stop_words_path) {
         this.index_path = postings_path;
-        this.documents_in_corpus = new ArrayList<>();
-        this.dictionary = new HashMap<>();
-        this.cities_of_docs = new HashMap<>();
+        this.documents_in_corpus = new LinkedBlockingDeque<>();
+        this.dictionary = new ConcurrentHashMap<>();
+        this.cities_of_docs = new ConcurrentHashMap<>();
         this.cities_dictionary = Cities.get_cities_dictionary();
         this.use_stemmer = false;
         this.stop_words = getStopWords(stop_words_path);
@@ -34,9 +34,9 @@ public class Indexer {
 
         this.files_per_posting = files_per_posting;
         this.use_stemmer = use_stemmer;
-        documents_in_corpus = new ArrayList<>();
-        dictionary = new HashMap<>();
-        cities_of_docs = new HashMap<>();
+        documents_in_corpus = new LinkedBlockingDeque<>();
+        dictionary = new ConcurrentHashMap<>();
+        cities_of_docs = new ConcurrentHashMap<>();
 
         // Create postings dir
         Path directory = Paths.get(index_path);
@@ -65,23 +65,23 @@ public class Indexer {
         }
 
         // Run tasks
-//        ThreadPoolExecutor executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(taskCount);
-        for (Task task : tasks) {
-
-            long taskStart = System.currentTimeMillis();
-
-            task.run();
-
-            long taskTime = System.currentTimeMillis() - taskStart;
-            System.out.println("task time: " + taskTime);
-        }
-//        for (Task task : tasks) executor.execute(task);
-//        try {
-//            executor.shutdown();
-//            executor.awaitTermination(1, TimeUnit.HOURS);
-//        } catch (InterruptedException e) {
-//            e.printStackTrace();
+        ThreadPoolExecutor executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(taskCount);
+//        for (Task task : tasks) {
+//
+//            long taskStart = System.currentTimeMillis();
+//
+//            task.run();
+//
+//            long taskTime = System.currentTimeMillis() - taskStart;
+//            System.out.println("task time: " + taskTime);
 //        }
+        for (Task task : tasks) executor.execute(task);
+        try {
+            executor.shutdown();
+            executor.awaitTermination(1, TimeUnit.HOURS);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
 
         register_documents();
         create_city_index();
