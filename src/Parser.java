@@ -101,10 +101,13 @@ public class Parser {
                         // find city
                         if (!foundCity && line.contains("<F P=104>")) {
                             foundCity = true;
-                            splitted = line.replace("<F P=104>", "").replace("</F P=104>", "").trim().split(" ");
-                            String city = splitted[0].replace("(","").replace(")","");
-                            doc.city = city.toUpperCase();
-                            terms.add(doc.city);
+                            splitted = line.replace("<F P=104>", "").replace("</F>", "").trim().split(" ");
+                            String city = splitted[0];
+                            if (city.length() > 0) {
+                                city = cleanTerm(city);
+                                doc.city = city.toUpperCase();
+                                terms.add(doc.city);
+                            }
 
                         } // get tokens
                         else if (line.contains("<TEXT>")) {
@@ -141,6 +144,7 @@ public class Parser {
                                         case '|': break;
                                         case '&': break;
                                         case ',': break;
+                                        case '`': break;
                                         case ' ': {
                                             if (stringBuilder.length() > 0) {
                                                 try {
@@ -175,9 +179,12 @@ public class Parser {
                                 while (true) {
                                     String term = getTerm(tokens.remove(), use_stemming);
                                     if (term.length() != 0 && !stop_words.contains(term.toLowerCase())) {
-                                        while (stopPrefixes.contains(term.charAt(0)) || stopPostfixes.contains(term.charAt(0)))
-                                            term = term.substring(1);
-                                        terms.add(term);
+                                        term = cleanTerm(term);
+                                        if (term.length() > 0) {
+                                            if (!(Character.isAlphabetic(term.charAt(0)) || Character.isDigit(term.charAt(0))))
+                                                System.out.println(term);
+                                            terms.add(term);
+                                        }
                                     }
                                 }
                             } catch (NoSuchElementException | IndexOutOfBoundsException ignored) {}
@@ -189,6 +196,20 @@ public class Parser {
             }
         }
         return docs;
+    }
+
+    private String cleanTerm(String term) {
+        while (term.length() > 0
+                && !(Character.isDigit(term.charAt(0))
+                || Character.isAlphabetic(term.charAt(0)))){
+            term = term.substring(1);
+        }
+        while (term.length() > 0 && term.charAt(term.length()-1) != '%'
+                && !(Character.isDigit(term.charAt(term.length()-1))
+                || Character.isAlphabetic(term.charAt(term.length()-1)))){
+            term = term.substring(0,term.length()-1);
+        }
+        return term;
     }
 
     private String getTerm(String token, boolean use_stemming) throws IndexOutOfBoundsException {

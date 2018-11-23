@@ -29,7 +29,7 @@ public class Main extends Application {
 
         Indexer indexer = new Indexer(postings_path, stop_words_path);
         try {
-            indexer.create_inverted_index(corpus_path, false, 10);
+            indexer.create_inverted_index(corpus_path, false, 1);
         } catch (IOException e) {
             e.printStackTrace();
         }
