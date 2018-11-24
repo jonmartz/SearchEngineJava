@@ -20,11 +20,7 @@ public class Indexer {
 
     public Indexer(String postings_path, String stop_words_path) {
         this.index_path = postings_path;
-        this.documents_in_corpus = new LinkedBlockingDeque<>();
-        this.dictionary = new ConcurrentHashMap<>();
-        this.cities_of_docs = new ConcurrentHashMap<>();
         this.cities_dictionary = Cities.get_cities_dictionary();
-        this.use_stemmer = false;
         this.stop_words = getStopWords(stop_words_path);
     }
 
@@ -89,7 +85,7 @@ public class Indexer {
         // Free up memory for merging
         documents_in_corpus.clear();
         cities_of_docs.clear();
-        register_dictionary(); //todo: remove
+//        register_dictionary(); //todo: remove
 
         long mergeStart = System.currentTimeMillis();
 
@@ -156,7 +152,7 @@ public class Indexer {
         @Override
         public void run() {
 
-            System.out.println("\ntask " + id);
+            System.out.println("task " + id);
 
             HashMap<String, LinkedList<ArrayList<String>>> terms_in_docs = new HashMap<>();
             int posting_id = id;
@@ -329,22 +325,27 @@ public class Indexer {
         private void mergePostings() throws IOException {
             new File(index_path + "\\postings\\merged").mkdirs();
             String chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-            ArrayList<RandomAccessFile> postings = new ArrayList<>();
+            ArrayList<BufferedReader> postings = new ArrayList<>();
             for (int id = 0; id < postingsCount; id++){
-                RandomAccessFile posting = new RandomAccessFile(index_path + "\\postings\\" + id, "r");
+                String path = index_path + "\\postings\\" + id;
+                BufferedReader posting = new BufferedReader(new FileReader(new File(path)));
                 postings.add(posting);
             }
             for (int i = 0; i < chars.length(); i++){
+
+                long start = System.currentTimeMillis();
+
                 char character = chars.charAt(i);
 
                 // Map the terms found to their postings
                 HashMap<String, ArrayList<String>> terms = new HashMap<>();
-                int j = 0;
-                for (RandomAccessFile posting : postings){
+//                int j = 0;
+                for (BufferedReader posting : postings){
 
-                    System.out.println(j++);
+//                    System.out.println(j++);
 
-                    long lastOffset = posting.getFilePointer(); // to return to term in case character != term.charAt(0)
+//                    long lastOffset = posting.getFilePointer(); // to return to term in case character != term.charAt(0)
+                    posting.mark(1000);
                     String term = posting.readLine();
                     while (term != null && character == term.charAt(0)) {
                         term = term.trim();
@@ -359,10 +360,11 @@ public class Indexer {
                             line = posting.readLine();
                         }
                         if (line == null) break;
-                        lastOffset = posting.getFilePointer();
+//                        lastOffset = posting.getFilePointer();
+                        posting.mark(1000);
                         term = posting.readLine();
                     }
-                    posting.seek(lastOffset);
+                    posting.reset();
                 }
 
                 // Write the term's postings
@@ -388,8 +390,11 @@ public class Indexer {
                     }
                 }
                 mergedPosting.close();
+
+                long time = System.currentTimeMillis() - start;
+                System.out.println(character + " time: " + time);
             }
-            for (RandomAccessFile posting : postings) posting.close();
+            for (BufferedReader posting : postings) posting.close();
         }
     }
 

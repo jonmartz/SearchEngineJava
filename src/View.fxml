@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.CheckBox?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.RowConstraints?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Text?>
+
+<GridPane alignment="center" hgap="10" vgap="10" xmlns="http://javafx.com/javafx/8.0.121" xmlns:fx="http://javafx.com/fxml/1" fx:controller="Controller">
+    <children>
+        <BorderPane prefHeight="250.0" prefWidth="500.0">
+            <left>
+                <VBox prefHeight="225.0" prefWidth="164.0" BorderPane.alignment="CENTER">
+                    <children>
+                        <GridPane prefHeight="237.0" prefWidth="164.0">
+                            <columnConstraints>
+                                <ColumnConstraints hgrow="SOMETIMES" maxWidth="136.0" minWidth="10.0" prefWidth="117.0" />
+                                <ColumnConstraints hgrow="SOMETIMES" maxWidth="98.0" minWidth="10.0" prefWidth="39.0" />
+                                <ColumnConstraints hgrow="SOMETIMES" maxWidth="83.0" minWidth="10.0" prefWidth="13.0" />
+                            </columnConstraints>
+                            <rowConstraints>
+                                <RowConstraints maxHeight="26.0" minHeight="10.0" prefHeight="22.0" vgrow="SOMETIMES" />
+                                <RowConstraints maxHeight="45.0" minHeight="10.0" prefHeight="35.0" vgrow="SOMETIMES" />
+                                <RowConstraints maxHeight="45.0" minHeight="10.0" prefHeight="33.0" vgrow="SOMETIMES" />
+                                <RowConstraints maxHeight="45.0" minHeight="10.0" prefHeight="35.0" />
+                        <RowConstraints maxHeight="45.0" minHeight="10.0" prefHeight="30.0" />
+                        <RowConstraints maxHeight="45.0" minHeight="10.0" prefHeight="30.0" />
+                        <RowConstraints maxHeight="45.0" minHeight="10.0" prefHeight="30.0" />
+                            </rowConstraints>
+                            <children>
+                                <Text strokeType="OUTSIDE" strokeWidth="0.0" text="Select paths:" />
+                                <Button mnemonicParsing="false" onAction="#getCorpusPath" prefHeight="25.0" prefWidth="139.0" text="Corpus path" GridPane.rowIndex="1" />
+                                <Text fx:id="corpusPathOKText" fill="GREEN" text="OK" visible="false" GridPane.columnIndex="1" GridPane.rowIndex="1">
+                                    <GridPane.margin>
+                                        <Insets left="5.0" />
+                                    </GridPane.margin>
+                                </Text>
+                                <Button mnemonicParsing="false" onAction="#getStopWordsPath" prefHeight="25.0" prefWidth="139.0" text="Stop-words path" GridPane.rowIndex="2" />
+                                <Text fx:id="stopWordsPathOKText" fill="GREEN" text="OK" visible="false" GridPane.columnIndex="1" GridPane.rowIndex="2">
+                                    <GridPane.margin>
+                                        <Insets left="5.0" />
+                                    </GridPane.margin>
+                                </Text>
+                                <Button mnemonicParsing="false" onAction="#getIndexPath" prefHeight="25.0" prefWidth="139.0" text="Index path" GridPane.rowIndex="3" />
+                                <Text fx:id="indexPathOKText" fill="GREEN" text="OK" visible="false" GridPane.columnIndex="1" GridPane.rowIndex="3">
+                                    <GridPane.margin>
+                                        <Insets left="5.0" />
+                                    </GridPane.margin>
+                                </Text>
+                        <CheckBox fx:id="useStemming" contentDisplay="RIGHT" mnemonicParsing="false" text="Use stemming" GridPane.rowIndex="4" />
+                        <Text fx:id="belowCreateIndexText" fill="GREEN" strokeType="OUTSIDE" strokeWidth="0.0" text="Creating index..." visible="false" GridPane.rowIndex="6" />
+                        <Button fx:id="createIndexButton" disable="true" mnemonicParsing="false" onAction="#createIndex" prefHeight="25.0" prefWidth="149.0" style="-fx-background-color: #2A5058;" text="Create Index" textFill="WHITE" GridPane.rowIndex="5" />
+                                <Separator orientation="VERTICAL" prefHeight="200.0" GridPane.columnIndex="2" GridPane.rowSpan="7" />
+                            </children>
+                            <padding>
+                                <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
+                            </padding>
+                        </GridPane>
+                    </children>
+                </VBox>
+            </left></BorderPane>
+    </children>
+    <columnConstraints>
+        <ColumnConstraints />
+    </columnConstraints>
+    <rowConstraints>
+        <RowConstraints />
+    </rowConstraints>
+</GridPane>

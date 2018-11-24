@@ -205,6 +205,9 @@ public class Parser {
                 || Character.isAlphabetic(term.charAt(term.length()-1)))){
             term = term.substring(0,term.length()-1);
         }
+        int len = term.length();
+        if (len > 1 && term.toLowerCase().charAt(len-1) == 's' && term.charAt(len-2) == '\'')
+            term = term.substring(0,len-2);
         return term;
     }
 

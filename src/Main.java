@@ -4,23 +4,22 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
 
-import java.io.IOException;
-
 public class Main extends Application {
 
     @Override
     public void start(Stage primaryStage) throws Exception {
-        Parent root = FXMLLoader.load(getClass().getResource("sample.fxml"));
-        primaryStage.setTitle("Hello World");
-        primaryStage.setScene(new Scene(root, 300, 275));
+        Parent root = FXMLLoader.load(getClass().getResource("View.fxml"));
+        primaryStage.setTitle("Search Engine");
+        primaryStage.setScene(new Scene(root, 500, 250));
         primaryStage.show();
 
     }
 
 
     public static void main(String[] args) {
-//        launch(args);
+        launch(args);
 
+        /*
 //         String corpus_path = "C:\\Users\\Jonathan\\Documents\\BGU\\Semester 5\\Information Retrieval\\corpus";
         String corpus_path = "C:\\Users\\Jonathan\\Documents\\BGU\\Semester 5\\Information Retrieval\\mini";
 //        String corpus_path = "C:\\Users\\Jonathan\\Documents\\BGU\\Semester 5\\Information Retrieval\\Test";
@@ -33,5 +32,6 @@ public class Main extends Application {
         } catch (IOException e) {
             e.printStackTrace();
         }
+        */
     }
 }
