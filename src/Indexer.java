@@ -1,5 +1,4 @@
 import java.io.*;
-import java.nio.charset.Charset;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.*;
@@ -9,19 +8,30 @@ public class Indexer {
 
     private HashSet<String> stop_words;
     private HashMap<String, String[]> cities_dictionary;
-    private ConcurrentHashMap<String, String[]> cities_of_docs;
-    private ConcurrentHashMap<String, long[]> dictionary;
-    private BlockingDeque<String> documents_in_corpus;
+
+//    private ConcurrentHashMap<String, String[]> cities_of_docs;
+//    private ConcurrentHashMap<String, long[]> dictionary;
+//    private BlockingDeque<String> documents_in_corpus;
+    private HashMap<String, String[]> cities_of_docs;
+    private HashMap<String, long[]> dictionary;
+    private ArrayList<String> documents_in_corpus;
+
     private String index_path;
     private boolean use_stemmer;
     private int files_per_posting;
     private int taskCount;
     private int postingsCount;
+    public double documentCount;
+    public double dictionarySize;
 
-    public Indexer(String postings_path, String stop_words_path) {
+    public Indexer(String postings_path, String stop_words_path) throws IOException {
         this.index_path = postings_path;
         this.cities_dictionary = Cities.get_cities_dictionary();
         this.stop_words = getStopWords(stop_words_path);
+    }
+
+    public HashMap getDictionary(){
+        return dictionary;
     }
 
     public void create_inverted_index(String corpus_path, boolean use_stemmer, int files_per_posting) throws IOException {
@@ -30,9 +40,13 @@ public class Indexer {
 
         this.files_per_posting = files_per_posting;
         this.use_stemmer = use_stemmer;
-        documents_in_corpus = new LinkedBlockingDeque<>();
-        dictionary = new ConcurrentHashMap<>();
-        cities_of_docs = new ConcurrentHashMap<>();
+
+//        documents_in_corpus = new LinkedBlockingDeque<>();
+//        dictionary = new ConcurrentHashMap<>();
+//        cities_of_docs = new ConcurrentHashMap<>();
+        documents_in_corpus = new ArrayList<>();
+        dictionary = new HashMap<>();
+        cities_of_docs = new HashMap<>();
 
         // Create postings dir
         Path directory = Paths.get(index_path);
@@ -42,7 +56,7 @@ public class Indexer {
         new File(index_path).mkdirs();
         new File(index_path + "\\postings").mkdirs();
 
-        this.taskCount = Runtime.getRuntime().availableProcessors() + 1;
+        this.taskCount = Runtime.getRuntime().availableProcessors();
         Task[] tasks = new Task[taskCount];
 
         // Create tasks
@@ -60,29 +74,22 @@ public class Indexer {
             if (i == taskCount) i = 0;
         }
 
-        // Run tasks
-        ThreadPoolExecutor executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(taskCount);
-//        for (Task task : tasks) {
-//
-//            long taskStart = System.currentTimeMillis();
-//
-//            task.run();
-//
-//            long taskTime = System.currentTimeMillis() - taskStart;
-//            System.out.println("task time: " + taskTime);
+        for (Task task : tasks) task.run();
+
+//        ThreadPoolExecutor executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(taskCount);
+//        for (Task task : tasks) executor.execute(task);
+//        try {
+//            executor.shutdown();
+//            executor.awaitTermination(1, TimeUnit.HOURS);
+//        } catch (InterruptedException e) {
+//            e.printStackTrace();
 //        }
-        for (Task task : tasks) executor.execute(task);
-        try {
-            executor.shutdown();
-            executor.awaitTermination(1, TimeUnit.HOURS);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
 
         register_documents();
         create_city_index();
 
         // Free up memory for merging
+        documentCount = documents_in_corpus.size();
         documents_in_corpus.clear();
         cities_of_docs.clear();
 //        register_dictionary(); //todo: remove
@@ -95,26 +102,23 @@ public class Indexer {
         System.out.println("\nmerge time: " + mergeTime);
 
         register_dictionary();
+        dictionarySize = dictionary.size();
 
         long time = System.currentTimeMillis() - start;
         System.out.println("total time: " + time);
     }
 
-    private static HashSet<String> getStopWords(String path) {
-        try {
-            List<String> lines = Files.readAllLines(Paths.get(path), Charset.defaultCharset());
-            HashSet<String> stopWords = new HashSet<>();
-            for (String line : lines) {
-                stopWords.add(line.trim());
-            }
-            return stopWords;
-        } catch (IOException e) {
-            e.printStackTrace();
+    private static HashSet<String> getStopWords(String path) throws IOException {
+        BufferedReader reader = new BufferedReader(new FileReader(new File(path)));
+        HashSet<String> stopWords = new HashSet<>();
+        String line;
+        while ((line = reader.readLine()) != null) {
+            stopWords.add(line.trim());
         }
-        return null;
+        return stopWords;
     }
 
-    private void removeDir(Path directory) throws IOException {
+    public void removeDir(Path directory) throws IOException {
         Files.walkFileTree(directory, new SimpleFileVisitor<Path>() {
             @Override
             public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
@@ -153,6 +157,8 @@ public class Indexer {
         public void run() {
 
             System.out.println("task " + id);
+
+            long taskStart = System.currentTimeMillis();
 
             HashMap<String, LinkedList<ArrayList<String>>> terms_in_docs = new HashMap<>();
             int posting_id = id;
@@ -257,6 +263,8 @@ public class Indexer {
                     e.printStackTrace();
                 }
             }
+            long taskTime = System.currentTimeMillis() - taskStart;
+            System.out.println("task time: " + taskTime);
         }
     }
 
@@ -269,7 +277,8 @@ public class Indexer {
         for (String term : terms) {
             LinkedList<ArrayList<String>> docs_with_term = terms_in_docs.get(term);
             out.write(term + "\n");
-            int df = 0;
+            int df = 0; // term's doc frequency
+            int cf = 0; // term's frequency in corpus
             for (ArrayList<String> doc_entry : docs_with_term) {
                 df++;
                 Iterator<String> iterator = doc_entry.iterator();
@@ -282,6 +291,7 @@ public class Indexer {
                     tf++;
                 }
                 positions.append("\n");
+                cf += tf;
                 out.write(String.join("|", doc_name, Integer.toString(tf), positions.toString()));
             }
             out.newLine();
@@ -289,11 +299,15 @@ public class Indexer {
             // update dictionary:
             term = setup_upper_lower_letters(term, dictionary);
             long[] term_data = dictionary.get(term);
-            if (term_data != null) term_data[0] += df;
+            if (term_data != null) {
+                term_data[0] += df;
+                term_data[1] += cf;
+            }
             else {
-                term_data = new long[2];
+                term_data = new long[3];
                 term_data[0] = df;
-                term_data[1] = 0;
+                term_data[1] = cf;
+                term_data[2] = 0;
                 dictionary.put(term, term_data);
             }
         }
@@ -382,7 +396,7 @@ public class Indexer {
                     }
                     if (termData != null) { // in case term has weird characters so it's not in dictionary, ignore.
                         mergedPosting.writeBytes(term + "\n");
-                        termData[1] = mergedPosting.getFilePointer();
+                        termData[2] = mergedPosting.getFilePointer();
                         for (String line : entry.getValue()) {
                             mergedPosting.writeBytes(line + "\n");
                         }
@@ -425,6 +439,7 @@ public class Indexer {
             line[0] = term;
             line[1] = Long.toString(term_data[0]);
             line[2] = Long.toString(term_data[1]);
+            line[3] = Long.toString(term_data[2]);
             out.write(String.join("|", line) + "\n");
         }
         out.close();
