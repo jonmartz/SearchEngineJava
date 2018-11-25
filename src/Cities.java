@@ -134,9 +134,9 @@ public class Cities {
         for (int i=0; i < list.length; i++) {
             String string = list[i];
             switch (i%4){
-                case 0: city = string;
-                case 1: data[0] = string;
-                case 2: data[1] = string;
+                case 0: city = string; break;
+                case 1: data[0] = string; break;
+                case 2: data[1] = string; break;
                 case 3: {
                     data[2] = string;
                     map.put(city, data);
