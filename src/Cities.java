@@ -1,7 +1,18 @@
 import java.util.HashMap;
 
+/**
+ * Class that holds the information of cities, taken from the Rest-Countries API.
+ * We modified the string that returned from a query for all countries to make an ArrayList, because waiting
+ * for the API to return a result took a lot of time and there's not that many countries anyway, so we could
+ * save them in memory.
+ */
 public class Cities {
 
+    /**
+     * Creates a HashMap with all the info needed from Rest-Countries.
+     * @return HashMap with keys being the city and the value being a String[] A
+     * such that A[0]=country, A[1]=currency and A[2]=population
+     */
     public static HashMap<String, String[]> get_cities_dictionary() {
         
         String[] list = {"STOCKHOLM","SWEDEN", "SEK", "9.89M","GEORGETOWN","GUYANA", "GYD", "746.9K","WILLEMSTAD",

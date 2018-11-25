@@ -10,7 +10,7 @@ import java.util.List;
 
 public class ReadFile {
 
-    public static ArrayList<Doc> read(String path) throws IOException {
+    synchronized public static ArrayList<Doc> read(String path) throws IOException {
 //        try {
 //            return Files.readAllLines(Paths.get(path), Charset.defaultCharset());
 //        } catch (MalformedInputException e){

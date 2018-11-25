@@ -1,19 +1,51 @@
 import opennlp.tools.stemmer.PorterStemmer;
-
 import java.io.IOException;
 import java.util.*;
 
+/**
+ * Is responsible for parsing
+ */
 public class Parser {
 
+    /**
+     * month data
+     */
     private HashMap<String, String> months;
+    /**
+     * prefixes to remove
+     */
     private HashSet<Character> stopPrefixes;
-    private HashSet<Character> stopPostfixes;
+    /**
+     * suffixes to remove
+     */
+    private HashSet<Character> stopSuffixes;
+    /**
+     * stem dictionary, for not using the stemmer for words that we already found what their stem is.
+     * Why? Because stemming takes a very long time, and holding the stems in memory is not a problem
+     * considering the time it will save.
+     */
     private HashMap<String, String> stem_collection;
+    /**
+     * token list from doc
+     */
     private LinkedList<String> tokens;
+    /**
+     * term list from doc (tokens after parsing)
+     */
     private LinkedList<String> terms;
+    /**
+     * stop-words set
+     */
     private HashSet stop_words;
+    /**
+     * the stemmer
+     */
     private PorterStemmer stemmer = new PorterStemmer();
 
+    /**
+     * Constructor. Creates months, prefixes and suffixes sets.
+     * @param stop_words set
+     */
     public Parser(HashSet stop_words) {
         this.stop_words = stop_words;
         tokens = new LinkedList<>();
@@ -54,29 +86,32 @@ public class Parser {
         stopPrefixes.add('(');
         stopPrefixes.add('<');
         stopPrefixes.add('=');
-        stopPostfixes = new HashSet<>();
-        stopPostfixes.add('.');
-        stopPostfixes.add('-');
-        stopPostfixes.add(',');
-        stopPostfixes.add('/');
-        stopPostfixes.add('\'');
-        stopPostfixes.add('$');
-        stopPostfixes.add(' ');
-        stopPostfixes.add(')');
-        stopPostfixes.add('>');
-        stopPostfixes.add('=');
+        stopSuffixes = new HashSet<>();
+        stopSuffixes.add('.');
+        stopSuffixes.add('-');
+        stopSuffixes.add(',');
+        stopSuffixes.add('/');
+        stopSuffixes.add('\'');
+        stopSuffixes.add('$');
+        stopSuffixes.add(' ');
+        stopSuffixes.add(')');
+        stopSuffixes.add('>');
+        stopSuffixes.add('=');
     }
 
-
-    public ArrayList<Doc> get_processed_docs(String file_path, boolean use_stemming) throws IOException {
+    /**
+     * Parse all the documents from file in file_path. Gets a Doc array from ReadFile where each Doc.lines
+     * is a list of the lines in doc, but each Doc.terms is still null.
+     * @param file_path of file to parse
+     * @param use_stemming to stem
+     * @return array of Docs where each Doc.terms is the list of the doc's terms
+     */
+    public ArrayList<Doc> getParsedDocs(String file_path, boolean use_stemming) throws IOException {
 
         ArrayList<Doc> docs = ReadFile.read(file_path);
         if (docs.size() == 0) return null;
-
         String[] splitted = file_path.split("\\\\");
         String fileName = splitted[splitted.length-1];
-
-//        System.out.println(fileName);
 
         String line = "";
         StringBuilder stringBuilder = new StringBuilder();
@@ -103,7 +138,7 @@ public class Parser {
                             foundCity = true;
                             splitted = line.replace("<F P=104>", "").replace("</F>", "").trim().split(" ");
                             String city = splitted[0];
-                            city = cleanTerm(city).toUpperCase();
+                            city = cleanString(city).toUpperCase();
                             if (city.length() > 0) {
                                 doc.city = city;
                                 terms.add(city);
@@ -154,7 +189,7 @@ public class Parser {
                                                         firstChar = stringBuilder.charAt(0);
                                                     }
                                                     char lastChar = stringBuilder.charAt(stringBuilder.length() - 1);
-                                                    while (stopPostfixes.contains(lastChar)) {
+                                                    while (stopSuffixes.contains(lastChar)) {
                                                         stringBuilder.deleteCharAt(stringBuilder.length() - 1);
                                                         lastChar = stringBuilder.charAt(stringBuilder.length() - 1);
                                                     }
@@ -178,8 +213,7 @@ public class Parser {
                             try {
                                 while (true) {
                                     String term = getTerm(tokens.remove(), use_stemming);
-//                                    if (term.length() > 0 && !stop_words.contains(term.toLowerCase())) {
-                                    term = cleanTerm(term);
+                                    term = cleanString(term); // need to clean again just in case
                                     if (term.length() > 0 && !stop_words.contains(term.toLowerCase()))
                                         terms.add(term);
                                 }
@@ -194,21 +228,26 @@ public class Parser {
         return docs;
     }
 
-    private String cleanTerm(String term) {
-        while (term.length() > 0
-                && !(Character.isDigit(term.charAt(0))
-                || Character.isAlphabetic(term.charAt(0)))){
-            term = term.substring(1);
+    /**
+     * Cleans the string from all unecessary symbols
+     * @param string to clean
+     * @return clean string
+     */
+    private String cleanString(String string) {
+        while (string.length() > 0
+                && !(Character.isDigit(string.charAt(0))
+                || Character.isAlphabetic(string.charAt(0)))){
+            string = string.substring(1);
         }
-        while (term.length() > 0 && term.charAt(term.length()-1) != '%'
-                && !(Character.isDigit(term.charAt(term.length()-1))
-                || Character.isAlphabetic(term.charAt(term.length()-1)))){
-            term = term.substring(0,term.length()-1);
+        while (string.length() > 0 && string.charAt(string.length()-1) != '%'
+                && !(Character.isDigit(string.charAt(string.length()-1))
+                || Character.isAlphabetic(string.charAt(string.length()-1)))){
+            string = string.substring(0,string.length()-1);
         }
-        int len = term.length();
-        if (len > 1 && term.toLowerCase().charAt(len-1) == 's' && term.charAt(len-2) == '\'')
-            term = term.substring(0,len-2);
-        return term;
+        int len = string.length();
+        if (len > 1 && string.toLowerCase().charAt(len-1) == 's' && string.charAt(len-2) == '\'')
+            string = string.substring(0,len-2);
+        return string;
     }
 
     private String getTerm(String token, boolean use_stemming) throws IndexOutOfBoundsException {

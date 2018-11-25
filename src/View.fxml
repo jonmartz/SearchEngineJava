@@ -41,28 +41,28 @@
                             </rowConstraints>
                             <children>
                                 <Text fill="#646464" strokeType="OUTSIDE" strokeWidth="0.0" text="Select paths:" />
-                                <Button mnemonicParsing="false" onAction="#getCorpusPath" prefHeight="25.0" prefWidth="139.0" text="Corpus path" GridPane.rowIndex="1" />
-                                <Text fx:id="corpusPathOKText" fill="GREEN" text="OK" visible="false" GridPane.columnIndex="1" GridPane.rowIndex="1">
+                                <Button mnemonicParsing="false" onAction="#getCorpusPath" prefHeight="25.0" prefWidth="139.0" text="Corpus path" GridPane.rowIndex="2" />
+                                <Text fx:id="corpusPathOKText" fill="GREEN" text="OK" visible="false" GridPane.columnIndex="1" GridPane.rowIndex="2">
                                     <GridPane.margin>
                                         <Insets left="5.0" />
                                     </GridPane.margin>
                                 </Text>
-                                <Button mnemonicParsing="false" onAction="#getStopWordsPath" prefHeight="25.0" prefWidth="139.0" text="Stop-words path" GridPane.rowIndex="2" />
-                                <Text fx:id="stopWordsPathOKText" fill="GREEN" text="OK" visible="false" GridPane.columnIndex="1" GridPane.rowIndex="2">
+                                <Button mnemonicParsing="false" onAction="#getStopWordsPath" prefHeight="25.0" prefWidth="139.0" text="Stop-words path" GridPane.rowIndex="3" />
+                                <Text fx:id="stopWordsPathOKText" fill="GREEN" text="OK" visible="false" GridPane.columnIndex="1" GridPane.rowIndex="3">
                                     <GridPane.margin>
                                         <Insets left="5.0" />
                                     </GridPane.margin>
                                 </Text>
-                                <Button mnemonicParsing="false" onAction="#getIndexPath" prefHeight="25.0" prefWidth="139.0" text="Index path" GridPane.rowIndex="3" />
-                                <Text fx:id="indexPathOKText" fill="GREEN" text="OK" visible="false" GridPane.columnIndex="1" GridPane.rowIndex="3">
+                                <Button mnemonicParsing="false" onAction="#getIndexPath" prefHeight="25.0" prefWidth="139.0" text="Index path" GridPane.rowIndex="1" />
+                                <Text fx:id="indexPathOKText" fill="GREEN" text="OK" visible="false" GridPane.columnIndex="1" GridPane.rowIndex="1">
                                     <GridPane.margin>
                                         <Insets left="5.0" />
                                     </GridPane.margin>
                                 </Text>
                         <CheckBox fx:id="useStemming" contentDisplay="RIGHT" mnemonicParsing="false" text="Use stemming" GridPane.rowIndex="4" />
-                        <Text fx:id="belowCreateIndexText" fill="GREEN" strokeType="OUTSIDE" strokeWidth="0.0" text="Creating index..." visible="false" GridPane.rowIndex="6" />
-                        <Button fx:id="createIndexButton" disable="true" mnemonicParsing="false" onAction="#createIndex" prefHeight="25.0" prefWidth="149.0" style="-fx-background-color: #2A5058;" text="Create Index" textFill="WHITE" GridPane.rowIndex="5" />
+                        <Button fx:id="createIndexButton" disable="true" mnemonicParsing="false" onAction="#createIndex" prefHeight="25.0" prefWidth="149.0" style="-fx-background-color: #2A5058;" textFill="WHITE" text="Create Index" GridPane.rowIndex="6" />
                                 <Separator orientation="VERTICAL" prefHeight="200.0" GridPane.columnIndex="2" GridPane.rowSpan="7" />
+                        <Button fx:id="loadDictionaryButton" disable="true" mnemonicParsing="false" onAction="#loadDictionary" prefHeight="25.0" prefWidth="125.0" style="-fx-background-color: #2A5058;"  textFill="WHITE" text="Load Dictionary" GridPane.rowIndex="5" />
                             </children>
                             <padding>
                                 <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
@@ -113,20 +113,20 @@
                   <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
               </rowConstraints>
                <children>
-                  <Text fx:id="stat1" strokeType="OUTSIDE" strokeWidth="0.0" text="Number of documents:" GridPane.rowIndex="1" />
-                  <Text fx:id="docCountText" strokeType="OUTSIDE" strokeWidth="0.0" text="docCount" GridPane.columnIndex="1" GridPane.rowIndex="1">
+                  <Text fx:id="docCountText" strokeType="OUTSIDE" strokeWidth="0.0" text="Number of documents:" GridPane.rowIndex="1" />
+                  <Text fx:id="docCountValue" strokeType="OUTSIDE" strokeWidth="0.0" text="docCount" GridPane.columnIndex="1" GridPane.rowIndex="1">
                      <font>
                         <Font name="System Bold" size="12.0" />
                      </font>
                   </Text>
-                  <Text fx:id="stat2" strokeType="OUTSIDE" strokeWidth="0.0" text="Number of terms:" GridPane.rowIndex="2" />
-                  <Text fx:id="termCountText" strokeType="OUTSIDE" strokeWidth="0.0" text="termCount" GridPane.columnIndex="1" GridPane.rowIndex="2">
+                  <Text fx:id="termCountText" strokeType="OUTSIDE" strokeWidth="0.0" text="Number of terms:" GridPane.rowIndex="2" />
+                  <Text fx:id="termCountValue" strokeType="OUTSIDE" strokeWidth="0.0" text="termCount" GridPane.columnIndex="1" GridPane.rowIndex="2">
                       <font>
                           <Font name="System Bold" size="12.0" />
                       </font>
                   </Text>
-                  <Text fx:id="stat3" strokeType="OUTSIDE" strokeWidth="0.0" text="Indexing elapsed time:" GridPane.rowIndex="3" />
-                  <Text fx:id="totalTimeText" strokeType="OUTSIDE" strokeWidth="0.0" text="totalTime" GridPane.columnIndex="1" GridPane.rowIndex="3">
+                  <Text fx:id="totalTimeText" strokeType="OUTSIDE" strokeWidth="0.0" text="Indexing elapsed time:" GridPane.rowIndex="3" />
+                  <Text fx:id="totalTimeValue" strokeType="OUTSIDE" strokeWidth="0.0" text="totalTime" GridPane.columnIndex="1" GridPane.rowIndex="3">
                       <font>
                           <Font name="System Bold" size="12.0" />
                       </font>
@@ -140,6 +140,7 @@
                         <Insets left="10.0" />
                      </GridPane.margin>
                   </Separator>
+                  <Text fx:id="commentsBox" fill="GREEN" strokeType="OUTSIDE" strokeWidth="0.0" text="CommentsBox" GridPane.rowIndex="6" />
                </children>
                <padding>
                   <Insets right="10.0" />
