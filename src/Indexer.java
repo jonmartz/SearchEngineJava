@@ -138,8 +138,8 @@ public class Indexer {
 //        }
 
         documentCount = documents_in_corpus.size();
-        register_documents();
-        create_city_index();
+        writeDocumentsIndex();
+        writeCityIndex();
 
         // Free up memory for merging
         documents_in_corpus.clear();
@@ -152,7 +152,7 @@ public class Indexer {
         long mergeTime = System.currentTimeMillis() - mergeStart;
         System.out.println("\nmerge time: " + mergeTime);
 
-        register_dictionary();
+        writeDictionary();
         dictionarySize = dictionary.size();
 
         long time = System.currentTimeMillis() - start;
@@ -323,6 +323,7 @@ public class Indexer {
 
     /**
      * Writes a single temporal posting to disk for all files indexed up to now, and removes them from memory.
+     * Will write all the term name in uppercase, so the merger can merge correctly.
      * @param posting_id id of posting (count)
      * @param terms_in_docs dictionary that maps each term to all the docs it was found in, including positions.
      */
@@ -334,7 +335,7 @@ public class Indexer {
         SortedSet<String> terms = new TreeSet<>(terms_in_docs.keySet());
         for (String term : terms) {
             LinkedList<ArrayList<String>> docs_with_term = terms_in_docs.get(term);
-            out.write(term + "\n");
+            out.write(term.toUpperCase() + "\n");
             int df = 0; // term's doc frequency
             int cf = 0; // term's frequency in corpus
             for (ArrayList<String> doc_entry : docs_with_term) {
@@ -392,7 +393,9 @@ public class Indexer {
     }
 
     /**
-     * Is responsible for merging all the temporal postings.
+     * Is responsible for merging all the temporal postings. The terms in all these
+     * postings are in uppercase, but the merger checks weather the terms shows in the
+     * dictionary as upper/lowercase to write it to the final posting accordingly.
      */
     private class Merger implements Runnable {
 
@@ -410,12 +413,12 @@ public class Indexer {
 
         /**
          * Will create one final posting for the following characters:
-         * 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz
+         * 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ
          * and for each character, it will run through all temporal postings and collect all the
          * terms that start with that character.
          */
         private void mergePostings() throws IOException {
-            String chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+            String chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
             ArrayList<BufferedReader> postings = new ArrayList<>();
             for (int id = 0; id < postingsCount; id++){
                 String path = index_path + "\\postings\\temp\\" + id;
@@ -454,14 +457,13 @@ public class Indexer {
 
                 // Write the term's postings
                 String id = String.valueOf(character);
-                if (Character.isUpperCase(character)) id += "_";
                 String path = index_path + "\\postings\\" + id;
                 RandomAccessFile mergedPosting = new RandomAccessFile(path, "rw");
                 for (Map.Entry<String, ArrayList<String>> entry : terms.entrySet())
                 {
-                    String term = entry.getKey();
+                    String term = entry.getKey(); // term is in uppercase
                     long[] termData = dictionary.get(term);
-                    if (termData == null){ // term was found in lower case AFTER we wrote it to the temporal posting
+                    if (termData == null){ // term is in dictionary in lowercase
                         term = term.toLowerCase();
                         termData = dictionary.get(term);
                     }
@@ -485,10 +487,9 @@ public class Indexer {
     }
 
     /**
-     *
-     * @throws IOException
+     * Writes the city index to disk
      */
-    private void create_city_index() throws IOException {
+    private void writeCityIndex() throws IOException {
         String[] citiesPath = {index_path, "cities"};
         FileWriter fstream = new FileWriter(String.join("\\", citiesPath), true);
         BufferedWriter out = new BufferedWriter(fstream);
@@ -498,13 +499,15 @@ public class Indexer {
             String[] line = new String[city_data.length + 2];
             line[0] = city;
             for (int i = 0; i < city_data.length; i++) line[i + 1] = city_data[i];
-            line[line.length - 1] = "\n";
-            out.write(String.join("|", line));
+            out.write(String.join("|", line) + "\n");
         }
         out.close();
     }
 
-    private void register_dictionary() throws IOException {
+    /**
+     * Writes the dictionary to disk
+     */
+    private void writeDictionary() throws IOException {
         String[] dictionaryPath = {index_path, "dictionary"};
         FileWriter fstream = new FileWriter(String.join("\\", dictionaryPath), true);
         BufferedWriter out = new BufferedWriter(fstream);
@@ -521,7 +524,10 @@ public class Indexer {
         out.close();
     }
 
-    private void register_documents() throws IOException {
+    /**
+     * Writes the documents' index to disk
+     */
+    private void writeDocumentsIndex() throws IOException {
         String[] documentsPath = {index_path, "documents"};
         FileWriter fstream = new FileWriter(String.join("\\", documentsPath), true);
         BufferedWriter out = new BufferedWriter(fstream);

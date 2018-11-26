@@ -1,4 +1,3 @@
-import opennlp.tools.stemmer.PorterStemmer;
 import java.io.IOException;
 import java.util.*;
 
@@ -229,7 +228,7 @@ public class Parser {
     }
 
     /**
-     * Cleans the string from all unecessary symbols
+     * Cleans the string from all unnecessary symbols
      * @param string to clean
      * @return clean string
      */
@@ -250,6 +249,15 @@ public class Parser {
         return string;
     }
 
+    /**
+     * Receives a token and transforms it into a term. That is, checks whether it belongs to one
+     * of the token types defined by the rules (number, date, dollar, etc.), and if it doesn't,
+     * it stems the token (in case useStemming is true).
+     * May have to look forward up to three tokens into the list of tokens.
+     * @param token to transform into a term
+     * @param use_stemming true to stem tokens, false otherwise
+     * @return the term (the token after transformation)
+     */
     private String getTerm(String token, boolean use_stemming) throws IndexOutOfBoundsException {
         String term = "";
         if (token.contains("$")) {
@@ -295,6 +303,13 @@ public class Parser {
         return token;
     }
 
+    /**
+     * check whether token is of type: NUMBER
+     * and if it is, return the according term.
+     * @param token to process into term
+     * @param is_dollar if process_dollar called this function
+     * @return term
+     */
     private String process_number(String token, boolean is_dollar){
         String next_token = "";
         try {
@@ -362,6 +377,12 @@ public class Parser {
         }
     }
 
+    /**
+     * check whether token is of type: PERCENTAGE
+     * and if it is, return the according term.
+     * @param token to process into term
+     * @return term
+     */
     private String process_percentage(String token) {
         try {
             if (token.endsWith("%")) {
@@ -381,6 +402,12 @@ public class Parser {
         }
     }
 
+    /**
+     * check whether token is of type: DOLLARS
+     * and if it is, return the according term.
+     * @param token to process into term
+     * @return term
+     */
     private String process_dollars(String token) {
         try {
             if (token.startsWith("$")) {
@@ -439,6 +466,12 @@ public class Parser {
         }
     }
 
+    /**
+     * check whether token is of type: DAY-MONTH
+     * and if it is, return the according term.
+     * @param token to process into term
+     * @return term
+     */
     private String process_day_month(String token) {
         try {
             token = token.toLowerCase();
@@ -466,6 +499,11 @@ public class Parser {
         }
     }
 
+    /**
+     * Add a zero on beginning of token, if token is a number between 1 and 9
+     * @param token to add a zero to
+     * @return token after adding a zero
+     */
     private String add_zero(String token) {
         try {
             int number = Integer.parseInt(token);
@@ -476,6 +514,12 @@ public class Parser {
         }
     }
 
+    /**
+     * check whether token is of type: YEAR-MONTH
+     * and if it is, return the according term.
+     * @param token to process into term
+     * @return term
+     */
     private String process_year_month(String token) {
         try {
             String next_token = tokens.getFirst().toLowerCase();
@@ -492,6 +536,12 @@ public class Parser {
         }
     }
 
+    /**
+     * check whether token is of type: RANGE or EXPRESSION
+     * and if it is, return the according term.
+     * @param token to process into term
+     * @return term
+     */
     private String process_range_or_expression(String token) {
         String next_token = "";
         String next_next_token = "";
