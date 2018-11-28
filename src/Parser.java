@@ -192,9 +192,12 @@ public class Parser {
                                                         stringBuilder.deleteCharAt(stringBuilder.length() - 1);
                                                         lastChar = stringBuilder.charAt(stringBuilder.length() - 1);
                                                     }
-                                                    String token = stringBuilder.toString();
-                                                    if (token.length() > 0 && !stop_words.contains(token)) {
-                                                        tokens.add(stringBuilder.toString());
+                                                    String token = stringBuilder.toString().toLowerCase();
+                                                    if (token.length() > 0) {
+                                                        if (token.equals("between") || token.equals("and") || token.equals("m")
+                                                                || !stop_words.contains(token)) {
+                                                            tokens.add(stringBuilder.toString());
+                                                        }
                                                     }
                                                 } catch (NullPointerException | StringIndexOutOfBoundsException ignored) {
                                                 }
@@ -214,6 +217,7 @@ public class Parser {
                                     String term = getTerm(tokens.remove(), use_stemming);
                                     term = cleanString(term); // need to clean again just in case
                                     if (term.length() > 0 && !stop_words.contains(term.toLowerCase()))
+                                        System.out.println(term);
                                         terms.add(term);
                                 }
                             } catch (NoSuchElementException | IndexOutOfBoundsException ignored) {}
@@ -410,49 +414,43 @@ public class Parser {
      */
     private String process_dollars(String token) {
         try {
+            // in case of $price
             if (token.startsWith("$")) {
                 Float.parseFloat(token.substring(1, token.length()));
                 token = token.substring(1, token.length());
                 return process_number(token, true) + " Dollars";
             }
             String next_token = tokens.getFirst().toLowerCase();
+            // in case of "price dollars"
             if (next_token.equals("dollars")) {
-                // in case number has 'm' || 'bn' suffix:
-                if (token.endsWith("m") || token.endsWith("bn")) {
-                    float number = Float.parseFloat(token.replace("m", "").replace("bn", ""));
-                    long factor = 1000000L;
-                    if (token.endsWith("bn")) factor = 1000000000L;
-                    number *= factor;
-                    String stringNumber = process_number(Float.toString(number), true);
-                    tokens.removeFirst();  // next term will be "Dollars"
-                    return stringNumber + " Dollars";
-                } else {
-                    Float.parseFloat(token);
-                    String stringNumber = process_number(token, true);
-                    if (next_token.equals("dollars")) {
-                        tokens.removeFirst();  // next term will be "Dollars"
-                        // todo: add comma in >1000 numbers
-                    } // else, case is "Price m/b/trillion U.S. dollars"
-                    else {
-                        // next two terms will be "U.S." && "Dollars"
-                        tokens.removeFirst();
-                    }
-                    return stringNumber + " Dollars";
-                }
-            } else {
+                Float.parseFloat(token);
+                String stringNumber = process_number(token, true);
+                tokens.removeFirst(); // remove "Dollars"
+                return stringNumber + " Dollars";
+                // In case of "Price m/bn Dollars"
+            } else if ((next_token.equals("m") || next_token.equals("bn"))
+                    && tokens.get(1).toLowerCase().equals("dollars")) { //todo: add comma
+                float number = Float.parseFloat(token);
+                long factor = 1000000L;
+                if (next_token.equals("bn")) factor = 1000000000L;
+                number *= factor;
+                String stringNumber = process_number(Float.toString(number), true);
+                tokens.removeFirst(); // remove "m" or "bn"
+                tokens.removeFirst(); // remove "Dollars"
+                return stringNumber + " Dollars";
+            }
+            else {
                 String next_next_token = tokens.get(1).toLowerCase();
-                // In case number has fraction && then dollar:
+                // In case number has fraction and then dollar:
                 if (next_next_token.equals("dollars")) {
                     String stringNumber = process_number(token, true);
                     if (stringNumber.length() != 0) {
-                        tokens.removeFirst();
-                        tokens.removeFirst();
+                        tokens.removeFirst(); // remove "Dollars"
                         return stringNumber + " Dollars";
                     }
                 }
-
                 // In case number is followed by "U.S. Dollars" (the last '.' in "U.S." was previously removed):
-                String next_next_next_token = tokens.get(2);
+                String next_next_next_token = tokens.get(2).toLowerCase();
                 if (next_next_token.equals("u.s") && next_next_next_token.equals("dollars")) {
                     String stringNumber = process_number(token, true);
                     tokens.removeFirst();
