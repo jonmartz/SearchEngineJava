@@ -244,7 +244,7 @@ public class Indexer {
                 fileCount += 1;
                 ArrayList<Doc> docs = null;
                 try {
-                    docs = new Parser(stop_words).getParsedDocs(filePath, use_stemmer);
+                    docs = new Parser(stop_words, cities_dictionary).getParsedDocs(filePath, use_stemmer);
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -253,7 +253,7 @@ public class Indexer {
                 for (Doc doc : docs) {
                     // get city
                     String city = doc.city;
-                    if (city.length() != 0) {
+                    if (city.length() > 0) {
                         String[] cityData = cities_of_docs.get(city);
                         if (cityData == null) {
                             String[] newCityData = cities_dictionary.get(city);
@@ -293,8 +293,8 @@ public class Indexer {
                         position++;
                     }
                     String[] line = {doc.name, doc.file, String.valueOf(doc.beginning), String.valueOf(doc.end),
-                            String.valueOf(position), String.valueOf(max_term_frequency), doc.city, "\n"};
-                    documents_in_corpus.add(String.join("|", line));
+                            String.valueOf(position), String.valueOf(max_term_frequency), doc.city};
+                    documents_in_corpus.add(String.join("|", line) + "\n");
                 }
                 // if reached max files per posting
                 if (fileCount == files_per_posting) {
@@ -496,7 +496,7 @@ public class Indexer {
         SortedSet<String> cities = new TreeSet<>(cities_of_docs.keySet());
         for (String city : cities) {
             String[] city_data = cities_of_docs.get(city);
-            String[] line = new String[city_data.length + 2];
+            String[] line = new String[city_data.length + 1];
             line[0] = city;
             for (int i = 0; i < city_data.length; i++) line[i + 1] = city_data[i];
             out.write(String.join("|", line) + "\n");

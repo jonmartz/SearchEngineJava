@@ -40,16 +40,18 @@ public class Parser {
      * the stemmer
      */
     private PorterStemmer stemmer = new PorterStemmer();
+    private HashMap<String, String[]> cities_dictionary;
 
     /**
      * Constructor. Creates months, prefixes and suffixes sets.
      * @param stop_words set
      */
-    public Parser(HashSet stop_words) {
+    public Parser(HashSet stop_words, HashMap cities_dictionary) {
         this.stop_words = stop_words;
         tokens = new LinkedList<>();
         terms = new LinkedList<>();
         stem_collection = new HashMap<>();
+        this.cities_dictionary = cities_dictionary;
         months = new HashMap<>();
         months.put("january", "01");
         months.put("february", "02");
@@ -109,8 +111,8 @@ public class Parser {
 
         ArrayList<Doc> docs = ReadFile.read(file_path);
         if (docs.size() == 0) return null;
-        String[] splitted = file_path.split("\\\\");
-        String fileName = splitted[splitted.length-1];
+        String[] splittedPath = file_path.split("\\\\");
+        String fileName = splittedPath[splittedPath.length-1];
 
         String line = "";
         StringBuilder stringBuilder = new StringBuilder();
@@ -135,9 +137,23 @@ public class Parser {
                         // find city
                         if (!foundCity && line.contains("<F P=104>")) {
                             foundCity = true;
-                            splitted = line.replace("<F P=104>", "").replace("</F>", "").trim().split(" ");
-                            String city = splitted[0];
-                            city = cleanString(city).toUpperCase();
+                            line = line.replace("<F P=104>", "").replace("</F>", "").trim().toUpperCase();
+                            String[] tagContents = line.split(" ");
+                            int i = 1;
+                            String city = tagContents[0];
+                            boolean isCityInDictionary = false;
+                            while (i < tagContents.length && i < 5){
+                                String next = tagContents[i];
+                                if (next.length() > 0) {
+                                    city = city + " " + next;
+                                    if (cities_dictionary.containsKey(city)){
+                                        isCityInDictionary = true;
+                                        break;
+                                    }
+                                }
+                                i++;
+                            }
+                            if (!isCityInDictionary) city = cleanString(tagContents[0]);
                             if (city.length() > 0) {
                                 doc.city = city;
                                 terms.add(city);
@@ -217,7 +233,6 @@ public class Parser {
                                     String term = getTerm(tokens.remove(), use_stemming);
                                     term = cleanString(term); // need to clean again just in case
                                     if (term.length() > 0 && !stop_words.contains(term.toLowerCase()))
-                                        System.out.println(term);
                                         terms.add(term);
                                 }
                             } catch (NoSuchElementException | IndexOutOfBoundsException ignored) {}
