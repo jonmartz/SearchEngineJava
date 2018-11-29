@@ -66,7 +66,7 @@ public class Controller implements Initializable {
     /**
      * Number of files to write in every temporal posting
      */
-    private int filesPerPosting = 1;
+    private int filesPerPosting = 10;
     /**
      * for measuring indexing time
      */

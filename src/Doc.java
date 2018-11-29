@@ -17,10 +17,6 @@ public class Doc {
      */
     public String file = "";
     /**
-     * Title of doc
-     */
-    public String title = "";
-    /**
      * Language of doc
      */
     public String language = "";
@@ -36,6 +32,10 @@ public class Doc {
      * line in file where the doc ends
      */
     public int end;
+    /**
+     * Title of doc
+     */
+    public ArrayList<String> title = new ArrayList<>();
     /**
      * lines of doc after reading
      */
