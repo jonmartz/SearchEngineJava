@@ -51,19 +51,27 @@ public class Parse {
      */
     private HashMap<String, String[]> cities_dictionary;
     /**
+     *
      * true to stem tokens
      */
     private boolean use_stemming;
+    /**
+     * cities than have been found in docs
+     */
+    private HashMap<String, String[]> cities_of_docs;
 
     /**
      * Constructor. Creates months, prefixes and suffixes sets.
      * @param stop_words set
      */
-    public Parse(HashSet stop_words, HashMap cities_dictionary, HashMap stem_collection, boolean use_stemming) {
+    public Parse(HashSet stop_words, HashMap cities_dictionary, HashMap cities_of_docs,
+                 HashMap stem_collection, boolean use_stemming) {
         this.stop_words = stop_words;
         this.cities_dictionary = cities_dictionary;
+        this.cities_of_docs = cities_of_docs;
         this.use_stemming = use_stemming;
         this.stem_collection = stem_collection;
+        //todo: add language index
         tokens = new LinkedList<>();
         terms = new LinkedList<>();
         months = new HashMap<>();
@@ -133,18 +141,14 @@ public class Parse {
         // docs is a list of all documents in file
         ArrayList<Doc> docs = new ArrayList<>();
 
+        int docPositionInFile = 0;
         for (String docString : docStrings) {
 
-            Doc doc = new Doc();
             tokens = new LinkedList<>();
             terms = new LinkedList<>();
 
             // Get structure from XML
             Document docStructure = Jsoup.parse(docString, "", Parser.xmlParser());
-            doc.file = fileName;
-            doc.name = docStructure.select("DOCNO").text();
-
-            // Get data from tags
             Elements FTags = docStructure.select("F");
             String city = null;
             String language = null;
@@ -156,14 +160,21 @@ public class Parse {
             if (title == null) title = docStructure.select("<HEADLINE>").text();
 
             // set doc data
+            Doc doc = new Doc();
+            tokens = new LinkedList<>();
+            terms = new LinkedList<>();
+            doc.file = fileName;
+            doc.name = docStructure.select("DOCNO").text();
+            doc.positionInFile = docPositionInFile++;
+            // Get data from tags
             if (city != null) setDocCity(doc, city);
             if (language != null) doc.language = language.toUpperCase();
+            if (title != null) setDocTitle(doc, title, city != null);
 
             // tokenize lines and get terms from tokens
             String[] lines = docStructure.select("TEXT").text().split("\n");
             for (String line : lines) tokenize(line);
             getTerms(doc);
-
             docs.add(doc);
         }
         return docs;
@@ -255,7 +266,7 @@ public class Parse {
                             }
                             String token = stringBuilder.toString().toLowerCase();
                             if (token.length() > 0) {
-                                if (token.equals("between") || token.equals("and") || token.equals("m")
+                                if (token.equals("between") || token.equals("and") || token.equals("m") || token.equals("may")
                                         || !stop_words.contains(token)) {
                                     tokens.add(stringBuilder.toString());
                                 }
@@ -275,25 +286,33 @@ public class Parse {
     /**
      * Set the city in doc
      * @param doc to set city to
-     * @param city to set
      */
-    private void setDocCity(Doc doc, String city) {
-        String[] cityWords = city.split(" ");
+    private void setDocCity(Doc doc, String line) {
+        String[] words = line.toUpperCase().trim().split(" ");
+        if (words.length == 0) return;
+
+        String city = words[0];
+        String[] cityData = null;
         int i = 1;
-        boolean isCityInDictionary = false;
-        while (i < cityWords.length && i < 5){
-            String next = cityWords[i];
-            if (next.length() > 0) {
-                city = city + " " + next;
-                if (cities_dictionary.containsKey(city)){
-                    isCityInDictionary = true;
-                    break;
-                }
+        while (i < words.length && i < 5){
+            cityData = cities_dictionary.get(city);
+            if (cityData != null){
+                cities_of_docs.put(city, cityData);
+                doc.city = city;
+                terms.add(city);
+                return;
             }
+            String next = words[i];
+            if (next.length() > 0) city = city + " " + next;
             i++;
         }
-        if (!isCityInDictionary) city = cleanString(cityWords[0]);
+        city = cleanString(words[0]);
         if (city.length() > 0) {
+            cityData = new String[3];
+            cityData[0] = "";
+            cityData[1] = "";
+            cityData[2] = "";
+            cities_of_docs.put(city, cityData);
             doc.city = city;
             terms.add(city);
         }
@@ -512,7 +531,7 @@ public class Parse {
                 return stringNumber + " Dollars";
                 // In case of "Price m/bn Dollars"
             } else if ((next_token.equals("m") || next_token.equals("bn"))
-                    && tokens.get(1).toLowerCase().equals("dollars")) { //todo: add comma
+                    && tokens.get(1).toLowerCase().equals("dollars")) {
                 float number = Float.parseFloat(token);
                 long factor = 1000000L;
                 if (next_token.equals("bn")) factor = 1000000000L;
@@ -581,7 +600,7 @@ public class Parse {
     }
 
     /**
-     * Add a zero on beginning of token, if token is a number between 1 and 9
+     * Add a zero on positionInFile of token, if token is a number between 1 and 9
      * @param token to add a zero to
      * @return token after adding a zero
      */

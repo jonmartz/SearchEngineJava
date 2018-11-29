@@ -25,13 +25,9 @@ public class Doc {
      */
     public String city = "";
     /**
-     * line in file where the doc begins
+     * position of doc in file
      */
-    public int beginning;
-    /**
-     * line in file where the doc ends
-     */
-    public int end;
+    public int positionInFile;
     /**
      * Title of doc
      */

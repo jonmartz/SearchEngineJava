@@ -18,7 +18,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.DecimalFormat;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
+
+//todo: add warning before removing index
 
 /**
  * Controls the interaction between the user, the GUI (View) and the Index (Model).
@@ -66,7 +67,7 @@ public class Controller implements Initializable {
     /**
      * Number of files to write in every temporal posting
      */
-    private int filesPerPosting = 10;
+    private int filesPerPosting = 2;
     /**
      * for measuring indexing time
      */
@@ -74,7 +75,6 @@ public class Controller implements Initializable {
     /**
      * dictionary to hold in memory
      */
-//    private HashMap<String, long[]> dictionary;
     private HashMap<String, long[]> dictionary;
 
     /**
@@ -236,7 +236,7 @@ public class Controller implements Initializable {
             Thread thread = new Thread(new Task<Void>() {
                 @Override
                 protected Void call() throws Exception {
-                    indexer.create_inverted_index(corpusPath, useStemming.isSelected(), filesPerPosting);
+                    indexer.createInvertedIndex(corpusPath, useStemming.isSelected(), filesPerPosting);
                     indexingFinished();
                     return null;
                 }

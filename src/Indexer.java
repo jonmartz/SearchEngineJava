@@ -84,16 +84,17 @@ public class Indexer {
      * Creates the index of corpus from corpus that in index path, using the stop-words
      * from the stop-words path. If there's already a completed index in the path, it replaces it.
      * @param corpus_path path of corpus directory
-     * @param use_stemmer true to use stemmer, false otherwise
+     * @param use_stemming true to use stemmer, false otherwise
      * @param files_per_posting files to write per temporal posting
      */
-    public void create_inverted_index(String corpus_path, boolean use_stemmer, int files_per_posting) throws IOException {
+    public void createInvertedIndex(String corpus_path, boolean use_stemming, int files_per_posting) throws IOException {
 
         long start = System.currentTimeMillis();
 
         this.files_per_posting = files_per_posting;
-        this.use_stemming = use_stemmer;
+        this.use_stemming = use_stemming;
 
+        //todo: add concurrency with local data structures
 //        documents_in_corpus = new LinkedBlockingDeque<>();
 //        dictionary = new ConcurrentHashMap<>();
 //        cities_of_docs = new ConcurrentHashMap<>();
@@ -235,85 +236,88 @@ public class Indexer {
 
             long taskStart = System.currentTimeMillis();
 
-            HashMap<String, LinkedList<ArrayList<String>>> terms_in_docs = new HashMap<>();
+            HashMap<String, String> stem_collection = new HashMap<>(); // save stems along the way
+            HashMap<String, LinkedList<ArrayList<String>>> termsInDocs = new HashMap<>();
             int fileCount = 0;
             int posting_id = id;
-            HashMap<String, String> stem_collection = new HashMap<>(); // save stems along the way
 
             // Index all files
             for (String filePath : filePaths) {
                 fileCount += 1;
                 ArrayList<Doc> docs = null;
 
+                // Get docs with all their terms
+                Parse parser = new Parse(stop_words, cities_dictionary, cities_of_docs ,stem_collection, use_stemming);
                 try {
-                    docs = new Parse(stop_words, cities_dictionary, stem_collection, use_stemming).getParsedDocs(filePath);
+                    docs = parser.getParsedDocs(filePath);
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
                 if (docs == null) continue;
 
+                // Add all 'terms in doc' to list of 'terms in docs in file'
                 for (Doc doc : docs) {
-                    // get city
-                    String city = doc.city;
-                    if (city.length() > 0) {
-                        String[] cityData = cities_of_docs.get(city);
-                        if (cityData == null) {
-                            String[] newCityData = cities_dictionary.get(city);
-                            if (newCityData != null) cities_of_docs.put(city, newCityData);
-                            else {
-                                String[] nullCityData = {"", "", ""};
-                                cities_of_docs.put(city, nullCityData);
-                            }
-                        }
-                    }
-                    // Add all 'terms in doc' to list of 'terms in docs in file'
                     LinkedList<String> terms_in_doc = doc.terms;
                     int max_term_frequency = 1;
-                    int position = 0;
+                    int termPosition = 0;
+
+                    // for every term:
                     for (String term : terms_in_doc) {
-                        term = setupUpperLowerCase(term, terms_in_docs);
-                        if (terms_in_docs.containsKey(term)) {
-                            LinkedList<ArrayList<String>> doc_entries = terms_in_docs.get(term);
-                            ArrayList<String> doc_entry = doc_entries.getLast();
-                            if (!doc_entry.get(0).equals(doc.name)) {
-                                ArrayList<String> new_doc_entry = new ArrayList<>();
-                                new_doc_entry.add(doc.name);
-                                terms_in_docs.get(term).add(new_doc_entry);
-                                doc_entry = new_doc_entry;
-                            }
-                            doc_entry.add(String.valueOf(position));
-                            int term_frequency = doc_entry.size() - 1;
-                            if (term_frequency > max_term_frequency) max_term_frequency = term_frequency;
-                        } else {
-                            LinkedList<ArrayList<String>> term_entry = new LinkedList<>();
-                            ArrayList<String> doc_entry = new ArrayList<>();
-                            doc_entry.add(doc.name);
-                            doc_entry.add(String.valueOf(position));
-                            term_entry.add(doc_entry);
-                            terms_in_docs.put(term, term_entry);
+                        // We write all terms in uppercase to temporal posting for sorting purposes
+                        boolean isLowerCase = term.equals(term.toLowerCase());
+                        term = term.toUpperCase();
+
+                        // check if term is already in term postings
+                        LinkedList<ArrayList<String>> termEntry = termsInDocs.get(term.toUpperCase());
+                        if (termEntry == null) {
+                            termEntry = new LinkedList<>();
+                            termsInDocs.put(term, termEntry);
                         }
-                        position++;
+                        // check if there's already a term posting for this doc
+                        ArrayList<String> docEntry = null;
+                        if (termEntry.size() > 0) docEntry = termEntry.getLast();
+                        if (docEntry == null || !docEntry.get(0).equals(doc.name)) {
+                            ArrayList<String> newDocEntry = new ArrayList<>();
+                            newDocEntry.add(doc.name);
+                            newDocEntry.add("U"); // assume term is always uppercase
+                            newDocEntry.add("f"); // assume term not in doc title
+                            termsInDocs.get(term).add(newDocEntry);
+                            docEntry = newDocEntry;
+                        }
+                        if (isLowerCase) docEntry.set(1, "L"); // correct to lowercase
+                        docEntry.add(String.valueOf(termPosition));
+                        int term_frequency = docEntry.size() - 3; // minus name, U/L (Upper/Lower) and f/t (title)
+                        if (term_frequency > max_term_frequency) max_term_frequency = term_frequency;
+                        termPosition++;
                     }
-                    String[] line = {doc.name, doc.file, String.valueOf(doc.beginning), String.valueOf(doc.end),
-                            String.valueOf(position), String.valueOf(max_term_frequency), doc.city};
+                    // Check which terms are in doc title and update index
+                    for (String term : doc.title){
+                        LinkedList<ArrayList<String>> termEntry = termsInDocs.get(term.toUpperCase());
+                        ArrayList<String> docEntry = termEntry.getLast();
+                        docEntry.set(2, "t");
+                    }
+                    // Add document row to the document index
+                    String[] line = {doc.name, doc.file, String.valueOf(doc.positionInFile),
+                            String.valueOf(termPosition), String.valueOf(max_term_frequency), doc.city};
                     documents_in_corpus.add(String.join("|", line) + "\n");
-                }
+                } // finished adding postings for all docs in file
+
                 // if reached max files per posting
                 if (fileCount == files_per_posting) {
                     fileCount = 0;
                     try {
-                        write_posting(posting_id, terms_in_docs);
+                        write_posting(posting_id, termsInDocs);
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
                     posting_id += taskCount;
-                    terms_in_docs = new HashMap<>();
+                    termsInDocs = new HashMap<>();
                 }
             }
             // Write last posting
-            if (!terms_in_docs.isEmpty()) {
+            if (!termsInDocs.isEmpty()) {
                 try {
-                    write_posting(posting_id, terms_in_docs);
+                    write_posting(posting_id, termsInDocs);
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -325,25 +329,28 @@ public class Indexer {
 
     /**
      * Writes a single temporal posting to disk for all files indexed up to now, and removes them from memory.
-     * Will write all the term name in uppercase, so the merger can merge correctly.
      * @param posting_id id of posting (count)
-     * @param terms_in_docs dictionary that maps each term to all the docs it was found in, including positions.
+     * @param termsInDocs dictionary that maps each term to all the docs it was found in, including positions.
      */
-    synchronized private void write_posting(int posting_id, HashMap<String, LinkedList<ArrayList<String>>> terms_in_docs) throws IOException {
+    synchronized private void write_posting(int posting_id, HashMap<String, LinkedList<ArrayList<String>>> termsInDocs) throws IOException {
         String[] postingPath = {index_path, "postings\\temp", String.valueOf(posting_id)};
         FileWriter fstream = new FileWriter(String.join("\\", postingPath), true);
         BufferedWriter out = new BufferedWriter(fstream);
+        SortedSet<String> terms = new TreeSet<>(termsInDocs.keySet());
 
-        SortedSet<String> terms = new TreeSet<>(terms_in_docs.keySet());
+        // Go through all terms in temporal posting in sorted order
         for (String term : terms) {
-            LinkedList<ArrayList<String>> docs_with_term = terms_in_docs.get(term);
-            out.write(term.toUpperCase() + "\n");
+            LinkedList<ArrayList<String>> docsWithTerm = termsInDocs.get(term);
+            out.write(term + "\n");
+            String upperLowerCase = "L"; // will be updated
             int df = 0; // term's doc frequency
-            int cf = 0; // term's frequency in corpus
-            for (ArrayList<String> doc_entry : docs_with_term) {
+            int cf = 0; // term's frequency in temporal posting
+            for (ArrayList<String> docEntry : docsWithTerm) {
                 df++;
-                Iterator<String> iterator = doc_entry.iterator();
-                String doc_name = iterator.next();
+                Iterator<String> iterator = docEntry.iterator();
+                String docName = iterator.next();
+                upperLowerCase = iterator.next();
+                String inDocTitle = iterator.next();
                 StringBuilder positions = new StringBuilder();
                 positions.append(iterator.next()); // first position without " "
                 int tf = 1;
@@ -353,45 +360,32 @@ public class Indexer {
                 }
                 positions.append("\n");
                 cf += tf;
-                out.write(String.join("|", doc_name, Integer.toString(tf), positions.toString()));
+                out.write(String.join("|", docName, inDocTitle,
+                        Integer.toString(tf), positions.toString()));
             }
             out.newLine();
 
-            // update dictionary:
-            term = setupUpperLowerCase(term, dictionary);
-            long[] term_data = dictionary.get(term);
-            if (term_data != null) {
-                term_data[0] += df;
-                term_data[1] += cf;
+            // update term in dictionary:
+            long[] termData = dictionary.get(term);
+            if (termData != null) {
+                // term in dictionary is in uppercase
+                if (upperLowerCase.equals("L")) {
+                    // but now showed in lowercase, so must update dictionary
+                    dictionary.remove(term);
+                    dictionary.put(term.toLowerCase(), termData);
+                }
             }
-            else {
-                term_data = new long[3];
-                term_data[0] = df;
-                term_data[1] = cf;
-                term_data[2] = 0;
-                dictionary.put(term, term_data);
+            else if ((termData = dictionary.get(term.toLowerCase())) == null){
+                // term is not in dictionary, either in lowercase or uppercase
+                termData = new long[3];
+                if (upperLowerCase.equals("L")) term = term.toLowerCase();
+                dictionary.put(term, termData);
             }
+            termData[0] += df;
+            termData[1] += cf;
         }
         out.close();
         postingsCount++;
-    }
-
-    /**
-     * Is responsible for maintaining the upper/lowercase forms of terms in the index:
-     * 1) if input term is in uppercase and it shows in dictionary as lowercase: change input term to lowercase.
-     * 2) if input term is in lowercase and it shows in dictionary as uppercase: change dictionary term to lowercase.
-     * @param term to check
-     * @param dictionary where term may have an entry
-     * @return modified (case 1) or unmodified (case 2) term
-     */
-    private String setupUpperLowerCase(String term, AbstractMap dictionary) {
-        if (term.equals(term.toUpperCase()) && dictionary.containsKey(term.toLowerCase())) {
-            return term.toLowerCase();
-        } else if (term.equals(term.toLowerCase()) && dictionary.containsKey(term.toUpperCase())) {
-            dictionary.put(term, dictionary.get(term.toUpperCase()));
-            dictionary.remove(term.toUpperCase());
-        }
-        return term;
     }
 
     /**

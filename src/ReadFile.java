@@ -9,7 +9,7 @@ public class ReadFile {
 
     /**
      * Return the list of Docs from file, separating Docs using the "<Doc>" tag.
-     * Sets each Doc's 'beginning', 'end' and 'lines' fields.
+     * Sets each Doc's 'positionInFile', 'end' and 'lines' fields.
      * @param path of file
      * @return list of Docs
      */
