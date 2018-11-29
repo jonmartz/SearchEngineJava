@@ -4,6 +4,9 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
 
+import java.io.IOException;
+import java.util.ArrayList;
+
 public class Main extends Application {
 
     @Override
@@ -16,7 +19,15 @@ public class Main extends Application {
 
 
     public static void main(String[] args) {
-        launch(args);
+//        launch(args);
+
+        String path = "C:\\Users\\Jonathan\\Documents\\BGU\\Semester 5\\Information Retrieval\\mini\\FB396010\\FB396010";
+        try {
+            ArrayList<Doc> docs = ReadFile.read(path);
+            System.out.println("hi");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
 
         /*
 //         String corpus_path = "C:\\Users\\Jonathan\\Documents\\BGU\\Semester 5\\Information Retrieval\\corpus";
