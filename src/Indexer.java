@@ -38,7 +38,7 @@ public class Indexer {
     /**
      * true to use stemming, false otherwise
      */
-    private boolean use_stemmer;
+    private boolean use_stemming;
     /**
      * files to write in each temporal posting
      */
@@ -92,7 +92,7 @@ public class Indexer {
         long start = System.currentTimeMillis();
 
         this.files_per_posting = files_per_posting;
-        this.use_stemmer = use_stemmer;
+        this.use_stemming = use_stemmer;
 
 //        documents_in_corpus = new LinkedBlockingDeque<>();
 //        dictionary = new ConcurrentHashMap<>();
@@ -236,15 +236,17 @@ public class Indexer {
             long taskStart = System.currentTimeMillis();
 
             HashMap<String, LinkedList<ArrayList<String>>> terms_in_docs = new HashMap<>();
-            int posting_id = id;
             int fileCount = 0;
+            int posting_id = id;
+            HashMap<String, String> stem_collection = new HashMap<>(); // save stems along the way
 
             // Index all files
             for (String filePath : filePaths) {
                 fileCount += 1;
                 ArrayList<Doc> docs = null;
+
                 try {
-                    docs = new Parser(stop_words, cities_dictionary).getParsedDocs(filePath, use_stemmer);
+                    docs = new Parse(stop_words, cities_dictionary, stem_collection, use_stemming).getParsedDocs(filePath);
                 } catch (IOException e) {
                     e.printStackTrace();
                 }

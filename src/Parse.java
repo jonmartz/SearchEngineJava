@@ -1,10 +1,16 @@
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.parser.Parser;
+import org.jsoup.select.Elements;
+
 import java.io.IOException;
 import java.util.*;
 
 /**
  * Is responsible for parsing
  */
-public class Parser {
+public class Parse {
 
     /**
      * month data
@@ -40,18 +46,26 @@ public class Parser {
      * the stemmer
      */
     private PorterStemmer stemmer = new PorterStemmer();
+    /**
+     * map with city info
+     */
     private HashMap<String, String[]> cities_dictionary;
+    /**
+     * true to stem tokens
+     */
+    private boolean use_stemming;
 
     /**
      * Constructor. Creates months, prefixes and suffixes sets.
      * @param stop_words set
      */
-    public Parser(HashSet stop_words, HashMap cities_dictionary) {
+    public Parse(HashSet stop_words, HashMap cities_dictionary, HashMap stem_collection, boolean use_stemming) {
         this.stop_words = stop_words;
+        this.cities_dictionary = cities_dictionary;
+        this.use_stemming = use_stemming;
+        this.stem_collection = stem_collection;
         tokens = new LinkedList<>();
         terms = new LinkedList<>();
-        stem_collection = new HashMap<>();
-        this.cities_dictionary = cities_dictionary;
         months = new HashMap<>();
         months.put("january", "01");
         months.put("february", "02");
@@ -104,146 +118,187 @@ public class Parser {
      * Parse all the documents from file in file_path. Gets a Doc array from ReadFile where each Doc.lines
      * is a list of the lines in doc, but each Doc.terms is still null.
      * @param file_path of file to parse
-     * @param use_stemming to stem
      * @return array of Docs where each Doc.terms is the list of the doc's terms
      */
-    public ArrayList<Doc> getParsedDocs(String file_path, boolean use_stemming) throws IOException {
+    public ArrayList<Doc> getParsedDocs(String file_path) throws IOException {
 
-        ArrayList<Doc> docs = ReadFile.read(file_path);
-        if (docs.size() == 0) return null;
+        // each docString is a string containing everything from <DOC> to </DOC>
+        ArrayList<String> docStrings = ReadFile.read(file_path); //
+        if (docStrings.size() == 0) return null;
+
+        // get filename
         String[] splittedPath = file_path.split("\\\\");
         String fileName = splittedPath[splittedPath.length-1];
 
-        String line = "";
-        StringBuilder stringBuilder = new StringBuilder();
+        // docs is a list of all documents in file
+        ArrayList<Doc> docs = new ArrayList<>();
 
-        for (Doc doc : docs) {
-            ArrayList<String> lines = doc.lines;
-            doc.lines = null; // to not pass the doc to indexer with lines, in order to save memory
-            doc.file = fileName;
+        for (String docString : docStrings) {
+
+            Doc doc = new Doc();
+            tokens = new LinkedList<>();
             terms = new LinkedList<>();
-            Iterator<String> iterator = lines.iterator();
 
-            // find doc name
-            while (iterator.hasNext()) {
-                line = iterator.next();
-                if (line.contains("<DOCNO>")) {
-                    doc.name = line.replace("<DOCNO>", "").replace("</DOCNO>", "").trim();
-                    boolean foundCity = false;
+            // Get structure from XML
+            Document docStructure = Jsoup.parse(docString, "", Parser.xmlParser());
+            doc.file = fileName;
+            doc.name = docStructure.select("DOCNO").text();
 
-                    // find text
-                    while (iterator.hasNext()) {
-                        line = iterator.next();
-                        // find city
-                        if (!foundCity && line.contains("<F P=104>")) {
-                            foundCity = true;
-                            line = line.replace("<F P=104>", "").replace("</F>", "").trim().toUpperCase();
-                            String[] tagContents = line.split(" ");
-                            int i = 1;
-                            String city = tagContents[0];
-                            boolean isCityInDictionary = false;
-                            while (i < tagContents.length && i < 5){
-                                String next = tagContents[i];
-                                if (next.length() > 0) {
-                                    city = city + " " + next;
-                                    if (cities_dictionary.containsKey(city)){
-                                        isCityInDictionary = true;
-                                        break;
-                                    }
-                                }
-                                i++;
-                            }
-                            if (!isCityInDictionary) city = cleanString(tagContents[0]);
-                            if (city.length() > 0) {
-                                doc.city = city;
-                                terms.add(city);
-                            }
+            // Get data from tags
+            Elements FTags = docStructure.select("F");
+            String city = null;
+            String language = null;
+            for (Element tag : FTags){
+                if (tag.attr("P").equals("104")) city = tag.text();
+                if (tag.attr("P").equals("105")) language = tag.text();
+            }
+            String title = docStructure.select("TI").text();
+            if (title == null) title = docStructure.select("<HEADLINE>").text();
 
-                        } // get tokens
-                        else if (line.contains("<TEXT>")) {
-                            if (line.contains("</TEXT>")) break; // In case text is empty and in same line
-                            tokens = new LinkedList<>();
-                            while (iterator.hasNext()) {
-                                line = iterator.next();
-                                if (line.trim().length() == 0) continue;
-                                if (line.contains("</TEXT>")) break;
-                                // Add tokens without symbols
-                                line = line.trim().concat(" "); // Add one space at end to ensure last token is taken
-                                int length = line.length();
-                                for (int i = 0; i < length; i++) {
-                                    char character = line.charAt(i);
-                                    switch (character) {
-                                        case '!': break;
-                                        case '@': break;
-                                        case ';': break;
-                                        case '+': break;
-                                        case ':': break;
-                                        case '?': break;
-                                        case '"': break;
-                                        case '*': break;
-                                        case '(': break;
-                                        case ')': break;
-                                        case '<': break;
-                                        case '>': break;
-                                        case '{': break;
-                                        case '}': break;
-                                        case '=': break;
-                                        case '[': break;
-                                        case ']': break;
-                                        case '#': break;
-                                        case '|': break;
-                                        case '&': break;
-                                        case ',': break;
-                                        case '`': break;
-                                        case ' ': {
-                                            if (stringBuilder.length() > 0) {
-                                                try {
-                                                    char firstChar = stringBuilder.charAt(0);
-                                                    while (stopPrefixes.contains(firstChar)) {
-                                                        stringBuilder.deleteCharAt(0);
-                                                        firstChar = stringBuilder.charAt(0);
-                                                    }
-                                                    char lastChar = stringBuilder.charAt(stringBuilder.length() - 1);
-                                                    while (stopSuffixes.contains(lastChar)) {
-                                                        stringBuilder.deleteCharAt(stringBuilder.length() - 1);
-                                                        lastChar = stringBuilder.charAt(stringBuilder.length() - 1);
-                                                    }
-                                                    String token = stringBuilder.toString().toLowerCase();
-                                                    if (token.length() > 0) {
-                                                        if (token.equals("between") || token.equals("and") || token.equals("m")
-                                                                || !stop_words.contains(token)) {
-                                                            tokens.add(stringBuilder.toString());
-                                                        }
-                                                    }
-                                                } catch (NullPointerException | StringIndexOutOfBoundsException ignored) {
-                                                }
-                                                stringBuilder = new StringBuilder();
-                                            }
-                                        }
-                                        break;
-                                        default:
-                                            stringBuilder.append(character);
-                                    }
-                                }
-                            }
+            // set doc data
+            if (city != null) setDocCity(doc, city);
+            if (language != null) doc.language = language.toUpperCase();
 
-                            // Get terms
+            // tokenize lines and get terms from tokens
+            String[] lines = docStructure.select("TEXT").text().split("\n");
+            tokenize(lines);
+            getTerms(doc);
+
+            docs.add(doc);
+        }
+        return docs;
+    }
+
+    /**
+     *
+     * @param doc
+     */
+    private void getTerms(Doc doc) {
+        try {
+            while (true) {
+                String term = getTerm(tokens.remove());
+                term = cleanString(term); // need to clean again just in case
+                if (term.length() > 0 && !stop_words.contains(term.toLowerCase()))
+                    terms.add(term);
+            }
+        } catch (NoSuchElementException | IndexOutOfBoundsException ignored) {}
+        doc.terms = terms;
+    }
+
+    /**
+     * Add tokens without symbols to token list
+     * @param lines to tokenize
+     */
+    private void tokenize(String[] lines) {
+        StringBuilder stringBuilder = new StringBuilder();
+        for (String line : lines) {
+            line = line.trim().concat(" "); // Add one space at end to ensure last token is taken
+            int length = line.length();
+            for (int i = 0; i < length; i++) {
+                char character = line.charAt(i);
+                switch (character) {
+                    case '!':
+                        break;
+                    case '@':
+                        break;
+                    case ';':
+                        break;
+                    case '+':
+                        break;
+                    case ':':
+                        break;
+                    case '?':
+                        break;
+                    case '"':
+                        break;
+                    case '*':
+                        break;
+                    case '(':
+                        break;
+                    case ')':
+                        break;
+                    case '<':
+                        break;
+                    case '>':
+                        break;
+                    case '{':
+                        break;
+                    case '}':
+                        break;
+                    case '=':
+                        break;
+                    case '[':
+                        break;
+                    case ']':
+                        break;
+                    case '#':
+                        break;
+                    case '|':
+                        break;
+                    case '&':
+                        break;
+                    case ',':
+                        break;
+                    case '`':
+                        break;
+                    case ' ': {
+                        if (stringBuilder.length() > 0) {
                             try {
-                                while (true) {
-                                    String term = getTerm(tokens.remove(), use_stemming);
-                                    term = cleanString(term); // need to clean again just in case
-                                    if (term.length() > 0 && !stop_words.contains(term.toLowerCase()))
-                                        terms.add(term);
+                                char firstChar = stringBuilder.charAt(0);
+                                while (stopPrefixes.contains(firstChar)) {
+                                    stringBuilder.deleteCharAt(0);
+                                    firstChar = stringBuilder.charAt(0);
                                 }
-                            } catch (NoSuchElementException | IndexOutOfBoundsException ignored) {}
-                            doc.terms = terms;
-                            break; // break from "find text" loop
+                                char lastChar = stringBuilder.charAt(stringBuilder.length() - 1);
+                                while (stopSuffixes.contains(lastChar)) {
+                                    stringBuilder.deleteCharAt(stringBuilder.length() - 1);
+                                    lastChar = stringBuilder.charAt(stringBuilder.length() - 1);
+                                }
+                                String token = stringBuilder.toString().toLowerCase();
+                                if (token.length() > 0) {
+                                    if (token.equals("between") || token.equals("and") || token.equals("m")
+                                            || !stop_words.contains(token)) {
+                                        tokens.add(stringBuilder.toString());
+                                    }
+                                }
+                            } catch (NullPointerException | StringIndexOutOfBoundsException ignored) {
+                            }
+                            stringBuilder = new StringBuilder();
                         }
                     }
+                    break;
+                    default:
+                        stringBuilder.append(character);
                 }
             }
         }
-        return docs;
+    }
+
+    /**
+     * Set the city in doc
+     * @param doc to set city to
+     * @param city to set
+     */
+    private void setDocCity(Doc doc, String city) {
+        String[] cityWords = city.split(" ");
+        int i = 1;
+        boolean isCityInDictionary = false;
+        while (i < cityWords.length && i < 5){
+            String next = cityWords[i];
+            if (next.length() > 0) {
+                city = city + " " + next;
+                if (cities_dictionary.containsKey(city)){
+                    isCityInDictionary = true;
+                    break;
+                }
+            }
+            i++;
+        }
+        if (!isCityInDictionary) city = cleanString(cityWords[0]);
+        if (city.length() > 0) {
+            doc.city = city;
+            terms.add(city);
+        }
     }
 
     /**
@@ -274,10 +329,9 @@ public class Parser {
      * it stems the token (in case useStemming is true).
      * May have to look forward up to three tokens into the list of tokens.
      * @param token to transform into a term
-     * @param use_stemming true to stem tokens, false otherwise
      * @return the term (the token after transformation)
      */
-    private String getTerm(String token, boolean use_stemming) throws IndexOutOfBoundsException {
+    private String getTerm(String token) throws IndexOutOfBoundsException {
         String term = "";
         if (token.contains("$")) {
             term = process_dollars(token);
