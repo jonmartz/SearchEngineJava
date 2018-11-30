@@ -4,11 +4,25 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.util.*;
 import java.util.concurrent.*;
 
+//todo: check if a city is in query
+
 /**
  * Responsible of building the inverted index for a corpus (data-set).
  */
 public class Indexer {
 
+    /**
+     * month list
+     */
+    private final HashMap months;
+    /**
+     * holds the characters to trim from a word's end
+     */
+    private final HashSet stopSuffixes;
+    /**
+     * holds the characters to trim from a word's beginning
+     */
+    private final HashSet stopPrefixes;
     /**
      * stop words data
      */
@@ -68,6 +82,79 @@ public class Indexer {
         this.index_path = index_path;
         this.citiesDictionary = Cities.get_cities_dictionary();
         this.stopWords = getStopWords(stop_words_path);
+        this.months = getMonths();
+        this.stopSuffixes = getStopSuffixes();
+        this.stopPrefixes = getStopPrefixes();
+    }
+
+    /**
+     * Build the prefixes to trim in word list
+     * @return set of prefixes
+     */
+    private HashSet getStopPrefixes() {
+        HashSet<Character> stopPrefixes = new HashSet<>();
+        stopPrefixes.add('.');
+        stopPrefixes.add('-');
+        stopPrefixes.add(',');
+        stopPrefixes.add('/');
+        stopPrefixes.add('\'');
+        stopPrefixes.add('%');
+        stopPrefixes.add(' ');
+        stopPrefixes.add('(');
+        stopPrefixes.add('<');
+        stopPrefixes.add('=');
+        return stopPrefixes;
+    }
+
+    /**
+     * Build the suffixes to trim in word list
+     * @return set of suffixes
+     */
+    private HashSet getStopSuffixes() {
+        HashSet<Character> stopSuffixes = new HashSet<>();
+        stopSuffixes.add('.');
+        stopSuffixes.add('-');
+        stopSuffixes.add(',');
+        stopSuffixes.add('/');
+        stopSuffixes.add('\'');
+        stopSuffixes.add('$');
+        stopSuffixes.add(' ');
+        stopSuffixes.add(')');
+        stopSuffixes.add('>');
+        stopSuffixes.add('=');
+        return stopSuffixes;
+    }
+
+    /**
+     * Build the month's list
+     * @return list
+     */
+    private HashMap getMonths() {
+        HashMap<String, String> months = new HashMap<>();
+        months.put("january", "01");
+        months.put("february", "02");
+        months.put("march", "03");
+        months.put("april", "04");
+        months.put("may", "05");
+        months.put("june", "06");
+        months.put("july", "07");
+        months.put("august", "08");
+        months.put("september", "09");
+        months.put("october", "10");
+        months.put("november", "11");
+        months.put("december", "12");
+        months.put("jan", "01");
+        months.put("feb", "02");
+        months.put("mar", "03");
+        months.put("apr", "04");
+        months.put("jun", "06");
+        months.put("jul", "07");
+        months.put("aug", "08");
+        months.put("sep", "09");
+        months.put("oct", "10");
+        months.put("nov", "11");
+        months.put("dec", "12");
+        return  months;
     }
 
     /**
@@ -92,10 +179,6 @@ public class Indexer {
         this.files_per_posting = files_per_posting;
         this.useStemming = use_stemming;
 
-        //todo: add concurrency with local data structures
-//        documentIndex = new LinkedBlockingDeque<>();
-//        dictionary = new ConcurrentHashMap<>();
-//        cityIndex = new ConcurrentHashMap<>();
         documentIndex = new ArrayList<>();
         dictionary = new HashMap<>();
         cityIndex = new HashMap<>();
@@ -132,10 +215,6 @@ public class Indexer {
         List<Future<TaskResult>> taskResults = new ArrayList<>();
         for (Task task : tasks) taskResults.add(executor.submit(task));
         try {
-            // wait for tasks to finish
-//            executor.shutdown();
-//            executor.awaitTermination(1, TimeUnit.HOURS);
-
             // merge task results
             for (Future<TaskResult> future : taskResults){
                 TaskResult taskResult = future.get();
@@ -148,8 +227,6 @@ public class Indexer {
                 for (Map.Entry<String, String[]> entry : taskResult.cities.entrySet()){
                     cityIndex.put(entry.getKey(), entry.getValue());
                 }
-
-                //todo: change ArrayList of term postings to String[]
 
                 // merge dictionaries
                 for (Map.Entry<String, long[]> entry : taskResult.dictionary.entrySet()){
@@ -187,6 +264,8 @@ public class Indexer {
         System.out.println("total time: " + time);
     }
 
+    // todo: make write blocks smaller
+
     /**
      * Updates a term's data in dictionary, while taking care of the Upper/LowerCase rules.
      * If the term doesn't exist in dictionary, add it.
@@ -196,8 +275,10 @@ public class Indexer {
      * @param dictionary to update
      */
     private void updateDictionary(String term, long df, long cf , HashMap<String, long[]> dictionary) {
-        boolean isLowerCase = term.equals(term.toLowerCase());
-        term = term.toUpperCase(); // to make process easier
+        Character firstChar = term.charAt(0);
+        boolean isLowerCase = !(Character.isDigit(firstChar) || Character.isUpperCase(firstChar));
+        if (!Character.isDigit(firstChar)) term = term.toUpperCase(); // to make the function's logic simpler
+
         long[] termData = dictionary.get(term);
         if (termData != null) {
             // term in dictionary is in uppercase
@@ -323,7 +404,8 @@ public class Indexer {
                 ArrayList<Doc> docs = null;
 
                 // Get docs with all their terms
-                Parse parser = new Parse(stopWords, citiesDictionary, partialCitiesOfDocs, stem_collection, useStemming);
+                Parse parser = new Parse(stopWords, citiesDictionary, partialCitiesOfDocs, months,
+                        stem_collection, stopSuffixes, stopPrefixes, useStemming);
                 try {
                     docs = parser.getParsedDocs(filePath);
                 } catch (IOException e) {
@@ -340,11 +422,12 @@ public class Indexer {
                     // for every term:
                     for (String term : terms_in_doc) {
                         // We write all terms in uppercase to temporal posting for sorting purposes
-                        boolean isLowerCase = term.equals(term.toLowerCase());
-                        term = term.toUpperCase();
+                        Character firstChar = term.charAt(0);
+                        boolean isLowerCase = !Character.isUpperCase(firstChar); // assume true
+                        if (!Character.isDigit(firstChar)) term = term.toUpperCase(); // check digit to not ruin Dollar rule
 
                         // check if term is already in term postings
-                        LinkedList<ArrayList<String>> termEntry = termsInDocs.get(term.toUpperCase());
+                        LinkedList<ArrayList<String>> termEntry = termsInDocs.get(term);
                         if (termEntry == null) {
                             termEntry = new LinkedList<>();
                             termsInDocs.put(term, termEntry);
@@ -419,7 +502,7 @@ public class Indexer {
             for (String term : terms) {
                 LinkedList<ArrayList<String>> docsWithTerm = termsInDocs.get(term);
                 out.write(term + "\n");
-                String upperLowerCase = "L"; // will be updated
+                String upperLowerCase = ""; // will be updated
                 int df = 0; // term's doc frequency
                 int cf = 0; // term's frequency in temporal posting
                 for (ArrayList<String> docEntry : docsWithTerm) {
@@ -441,7 +524,7 @@ public class Indexer {
                             Integer.toString(tf), positions.toString()));
                 }
                 out.newLine();
-                if (upperLowerCase.equals("L")) term = term.toLowerCase();
+                if (upperLowerCase.equals("L") && !Character.isDigit(term.charAt(0))) term = term.toLowerCase();
                 updateDictionary(term, df, cf, partialDictionary);
             }
             out.close();

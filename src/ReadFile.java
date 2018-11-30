@@ -8,8 +8,7 @@ import java.util.ArrayList;
 public class ReadFile {
 
     /**
-     * Return the list of Docs from file, separating Docs using the "<Doc>" tag.
-     * Sets each Doc's 'positionInFile', 'end' and 'lines' fields.
+     * Returns a list of the texts of all documents in file, splitting them according to the DOC tag.
      * @param path of file
      * @return list of Docs
      */

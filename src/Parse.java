@@ -64,62 +64,20 @@ public class Parse {
      * Constructor. Creates months, prefixes and suffixes sets.
      * @param stop_words set
      */
-    public Parse(HashSet stop_words, HashMap cities_dictionary, HashMap cities_of_docs,
-                 HashMap stem_collection, boolean use_stemming) {
+    public Parse(HashSet stop_words, HashMap cities_dictionary, HashMap cities_of_docs, HashMap months,
+                 HashMap stem_collection, HashSet stopSuffixes, HashSet stopPrefixes, boolean use_stemming) {
         this.stop_words = stop_words;
         this.cities_dictionary = cities_dictionary;
         this.cities_of_docs = cities_of_docs;
         this.use_stemming = use_stemming;
         this.stem_collection = stem_collection;
+        this.months = months;
+        this.stopPrefixes = stopPrefixes;
+        this.stopSuffixes = stopSuffixes;
         //todo: add language index
         tokens = new LinkedList<>();
         terms = new LinkedList<>();
-        months = new HashMap<>();
-        months.put("january", "01");
-        months.put("february", "02");
-        months.put("march", "03");
-        months.put("april", "04");
-        months.put("may", "05");
-        months.put("june", "06");
-        months.put("july", "07");
-        months.put("august", "08");
-        months.put("september", "09");
-        months.put("october", "10");
-        months.put("november", "11");
-        months.put("december", "12");
-        months.put("jan", "01");
-        months.put("feb", "02");
-        months.put("mar", "03");
-        months.put("apr", "04");
-        months.put("jun", "06");
-        months.put("jul", "07");
-        months.put("aug", "08");
-        months.put("sep", "09");
-        months.put("oct", "10");
-        months.put("nov", "11");
-        months.put("dec", "12");
-        stopPrefixes = new HashSet<>();
-        stopPrefixes.add('.');
-        stopPrefixes.add('-');
-        stopPrefixes.add(',');
-        stopPrefixes.add('/');
-        stopPrefixes.add('\'');
-        stopPrefixes.add('%');
-        stopPrefixes.add(' ');
-        stopPrefixes.add('(');
-        stopPrefixes.add('<');
-        stopPrefixes.add('=');
-        stopSuffixes = new HashSet<>();
-        stopSuffixes.add('.');
-        stopSuffixes.add('-');
-        stopSuffixes.add(',');
-        stopSuffixes.add('/');
-        stopSuffixes.add('\'');
-        stopSuffixes.add('$');
-        stopSuffixes.add(' ');
-        stopSuffixes.add(')');
-        stopSuffixes.add('>');
-        stopSuffixes.add('=');
+
     }
 
     /**
@@ -173,114 +131,12 @@ public class Parse {
 
             // tokenize lines and get terms from tokens
             String[] lines = docStructure.select("TEXT").text().split("\n");
+            docStructure = null;
             for (String line : lines) tokenize(line);
             getTerms(doc);
             docs.add(doc);
         }
         return docs;
-    }
-
-    /**
-     * Get terms from tokens and set then in doc
-     * @param doc to set terms to
-     */
-    private void getTerms(Doc doc) {
-        try {
-            while (true) {
-                String term = getTerm(tokens.remove());
-                term = cleanString(term); // need to clean again just in case
-                if (term.length() > 0 && !stop_words.contains(term.toLowerCase()))
-                    terms.add(term);
-            }
-        } catch (NoSuchElementException | IndexOutOfBoundsException ignored) {}
-        doc.terms = terms;
-    }
-
-    /**
-     * Add tokens without symbols to token list
-     * @param line to tokenize
-     */
-    private void tokenize(String line) {
-        StringBuilder stringBuilder = new StringBuilder();
-        line = line.trim().concat(" "); // Add one space at end to ensure last token is taken
-        int length = line.length();
-        for (int i = 0; i < length; i++) {
-            char character = line.charAt(i);
-            switch (character) {
-                case '!':
-                    break;
-                case '@':
-                    break;
-                case ';':
-                    break;
-                case '+':
-                    break;
-                case ':':
-                    break;
-                case '?':
-                    break;
-                case '"':
-                    break;
-                case '*':
-                    break;
-                case '(':
-                    break;
-                case ')':
-                    break;
-                case '<':
-                    break;
-                case '>':
-                    break;
-                case '{':
-                    break;
-                case '}':
-                    break;
-                case '=':
-                    break;
-                case '[':
-                    break;
-                case ']':
-                    break;
-                case '#':
-                    break;
-                case '|':
-                    break;
-                case '&':
-                    break;
-                case ',':
-                    break;
-                case '`':
-                    break;
-                case ' ': {
-                    if (stringBuilder.length() > 0) {
-                        try {
-                            char firstChar = stringBuilder.charAt(0);
-                            while (stopPrefixes.contains(firstChar)) {
-                                stringBuilder.deleteCharAt(0);
-                                firstChar = stringBuilder.charAt(0);
-                            }
-                            char lastChar = stringBuilder.charAt(stringBuilder.length() - 1);
-                            while (stopSuffixes.contains(lastChar)) {
-                                stringBuilder.deleteCharAt(stringBuilder.length() - 1);
-                                lastChar = stringBuilder.charAt(stringBuilder.length() - 1);
-                            }
-                            String token = stringBuilder.toString().toLowerCase();
-                            if (token.length() > 0) {
-                                if (token.equals("between") || token.equals("and") || token.equals("m") || token.equals("may")
-                                        || !stop_words.contains(token)) {
-                                    tokens.add(stringBuilder.toString());
-                                }
-                            }
-                        } catch (NullPointerException | StringIndexOutOfBoundsException ignored) {
-                        }
-                        stringBuilder = new StringBuilder();
-                    }
-                }
-                break;
-                default:
-                    stringBuilder.append(character);
-            }
-        }
     }
 
     /**
@@ -354,6 +210,110 @@ public class Parse {
         if (len > 1 && string.toLowerCase().charAt(len-1) == 's' && string.charAt(len-2) == '\'')
             string = string.substring(0,len-2);
         return string;
+    }
+
+    /**
+     * Add tokens without symbols to token list
+     * @param line to tokenize
+     */
+    private void tokenize(String line) {
+        StringBuilder stringBuilder = new StringBuilder();
+        line = line.trim().concat(" "); // Add one space at end to ensure last token is taken
+        int length = line.length();
+        for (int i = 0; i < length; i++) {
+            char character = line.charAt(i);
+            switch (character) {
+                case '!':
+                    break;
+                case '@':
+                    break;
+                case ';':
+                    break;
+                case '+':
+                    break;
+                case ':':
+                    break;
+                case '?':
+                    break;
+                case '"':
+                    break;
+                case '*':
+                    break;
+                case '(':
+                    break;
+                case ')':
+                    break;
+                case '<':
+                    break;
+                case '>':
+                    break;
+                case '{':
+                    break;
+                case '}':
+                    break;
+                case '=':
+                    break;
+                case '[':
+                    break;
+                case ']':
+                    break;
+                case '#':
+                    break;
+                case '|':
+                    break;
+                case '&':
+                    break;
+                case ',':
+                    break;
+                case '`':
+                    break;
+                case ' ': {
+                    if (stringBuilder.length() > 0) {
+                        try {
+                            char firstChar = stringBuilder.charAt(0);
+                            while (stopPrefixes.contains(firstChar)) {
+                                stringBuilder.deleteCharAt(0);
+                                firstChar = stringBuilder.charAt(0);
+                            }
+                            char lastChar = stringBuilder.charAt(stringBuilder.length() - 1);
+                            while (stopSuffixes.contains(lastChar)) {
+                                stringBuilder.deleteCharAt(stringBuilder.length() - 1);
+                                lastChar = stringBuilder.charAt(stringBuilder.length() - 1);
+                            }
+                            String token = stringBuilder.toString().toLowerCase();
+                            if (token.length() > 0) {
+                                if (token.equals("between") || token.equals("and") || token.equals("m")
+                                        || !stop_words.contains(token)) {
+                                    tokens.add(stringBuilder.toString());
+                                }
+                            }
+                        } catch (NullPointerException | StringIndexOutOfBoundsException ignored) {
+                        }
+                        stringBuilder = new StringBuilder();
+                    }
+                }
+                break;
+                default:
+                    stringBuilder.append(character);
+            }
+        }
+    }
+
+    /**
+     * Get terms from tokens and set them in doc
+     * @param doc to set terms to
+     */
+    private void getTerms(Doc doc) {
+        try {
+            while (true) {
+                String term = getTerm(tokens.remove());
+                term = cleanString(term); // need to clean again just in case
+                if (term.length() > 0 && !stop_words.contains(term.toLowerCase()))
+                    System.out.println(term);
+                    terms.add(term);
+            }
+        } catch (NoSuchElementException | IndexOutOfBoundsException ignored) {}
+        doc.terms = terms;
     }
 
     /**
@@ -651,6 +611,7 @@ public class Parse {
                 boolean is_expression = true;
                 for (String word : token.split("-")) {
                     if (word.length() == 0) is_expression = false;
+                    else tokens.addFirst(word);
                 }
                 if (is_expression) return token;
                 return "";

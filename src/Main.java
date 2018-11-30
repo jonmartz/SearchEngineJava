@@ -18,21 +18,22 @@ public class Main extends Application {
 
 
     public static void main(String[] args) {
-        launch(args);
+//        launch(args);
 
 
-////         String corpus_path = "C:\\Users\\Jonathan\\Documents\\BGU\\Semester 5\\Information Retrieval\\corpus";
+//         String corpus_path = "C:\\Users\\Jonathan\\Documents\\BGU\\Semester 5\\Information Retrieval\\corpus";
 //        String corpus_path = "C:\\Users\\Jonathan\\Documents\\BGU\\Semester 5\\Information Retrieval\\mini";
-////        String corpus_path = "C:\\Users\\Jonathan\\Documents\\BGU\\Semester 5\\Information Retrieval\\Test";
+        String corpus_path = "C:\\Users\\Jonathan\\Documents\\BGU\\Semester 5\\Information Retrieval\\Test";
 //        String index_path = "C:\\Users\\Jonathan\\Documents\\BGU\\Semester 5\\Information Retrieval\\index";
-//        String stop_words_path = "C:\\Users\\Jonathan\\Documents\\BGU\\Semester 5\\Information Retrieval\\stop_words.txt";
-//
-//        try {
-//            Indexer indexer = new Indexer(index_path, stop_words_path);
-//            indexer.createInvertedIndex(corpus_path, false, 10);
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//        }
+        String index_path = "C:\\Users\\Jonathan\\Documents\\BGU\\Semester 5\\Information Retrieval\\miniIndex";
+        String stop_words_path = "C:\\Users\\Jonathan\\Documents\\BGU\\Semester 5\\Information Retrieval\\stop_words.txt";
+
+        try {
+            Indexer indexer = new Indexer(index_path, stop_words_path);
+            indexer.createInvertedIndex(corpus_path, false, 10);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
 
     }
 }
