@@ -309,7 +309,7 @@ public class Parse {
                 String term = getTerm(tokens.remove());
                 term = cleanString(term); // need to clean again just in case
                 if (term.length() > 0 && !stop_words.contains(term.toLowerCase()))
-                    System.out.println(term);
+//                    System.out.println(term);
                     terms.add(term);
             }
         } catch (NoSuchElementException | IndexOutOfBoundsException ignored) {}

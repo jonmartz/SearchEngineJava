@@ -394,7 +394,7 @@ public class Indexer {
             long taskStart = System.currentTimeMillis();
 
             HashMap<String, String> stem_collection = new HashMap<>(); // save stems along the way
-            HashMap<String, LinkedList<ArrayList<String>>> termsInDocs = new HashMap<>();
+            HashMap<String, LinkedList<String[]>> termsInDocs = new HashMap<>();
             int fileCount = 0;
             int posting_id = id;
 
@@ -416,7 +416,7 @@ public class Indexer {
                 // Add all 'terms in doc' to list of 'terms in docs in file'
                 for (Doc doc : docs) {
                     LinkedList<String> terms_in_doc = doc.terms;
-                    int max_term_frequency = 1;
+                    int max_tf = 1;
                     int termPosition = 0;
 
                     // for every term:
@@ -427,37 +427,46 @@ public class Indexer {
                         if (!Character.isDigit(firstChar)) term = term.toUpperCase(); // check digit to not ruin Dollar rule
 
                         // check if term is already in term postings
-                        LinkedList<ArrayList<String>> termEntry = termsInDocs.get(term);
+                        LinkedList<String[]> termEntry = termsInDocs.get(term);
                         if (termEntry == null) {
                             termEntry = new LinkedList<>();
                             termsInDocs.put(term, termEntry);
                         }
                         // check if there's already a term posting for this doc
-                        ArrayList<String> docEntry = null;
+                        String[] docEntry = null;
                         if (termEntry.size() > 0) docEntry = termEntry.getLast();
-                        if (docEntry == null || !docEntry.get(0).equals(doc.name)) {
-                            ArrayList<String> newDocEntry = new ArrayList<>();
-                            newDocEntry.add(doc.name);
-                            newDocEntry.add("U"); // assume term is always uppercase
-                            newDocEntry.add("f"); // assume term not in doc title
-                            termsInDocs.get(term).add(newDocEntry);
+                        if (docEntry == null || !docEntry[0].equals(doc.name)) {
+                            String[] newDocEntry = new String[5];
+                            newDocEntry[0] = doc.name;
+                            newDocEntry[1] = "U"; // assume term is always uppercase
+                            newDocEntry[2] = "f"; // assume term not in doc title
+                            newDocEntry[3] = "0";
+                            newDocEntry[4] = "";
+                            termEntry.add(newDocEntry);
                             docEntry = newDocEntry;
                         }
-                        if (isLowerCase) docEntry.set(1, "L"); // correct to lowercase
-                        docEntry.add(String.valueOf(termPosition));
-                        int term_frequency = docEntry.size() - 3; // minus name, U/L (Upper/Lower) and f/t (title)
-                        if (term_frequency > max_term_frequency) max_term_frequency = term_frequency;
+                        if (isLowerCase) docEntry[1] = "L"; // correct to lowercase
+                        String termPositions = docEntry[4];
+
+                        // add position
+                        docEntry[4] = termPositions + " " + termPosition;
+                        int tf = Integer.parseInt(docEntry[3]);
+                        tf++;
+                        docEntry[4] = Integer.toString(tf);
+                        if (tf > max_tf) max_tf = tf;
                         termPosition++;
                     }
                     // Check which terms are in doc title and update index
                     for (String term : doc.title){
-                        LinkedList<ArrayList<String>> termEntry = termsInDocs.get(term.toUpperCase());
-                        ArrayList<String> docEntry = termEntry.getLast();
-                        docEntry.set(2, "t");
+                        if (!Character.isDigit(term.charAt(0))) term = term.toUpperCase();
+                        LinkedList<String[]> termEntry = termsInDocs.get(term);
+                        String[] docEntry = termEntry.getLast();
+                        docEntry[2] = "t";
                     }
-                    // Add document row to the document index
+                    // Add document row to the document index:
+                    // docname|file|positionInFile|termCount|maxTf|city|language
                     String[] line = {doc.name, doc.file, String.valueOf(doc.positionInFile),
-                            String.valueOf(termPosition), String.valueOf(max_term_frequency), doc.city};
+                            String.valueOf(termPosition), String.valueOf(max_tf), doc.city, doc.language};
                     partialDocumentsInCorpus.add(String.join("|", line) + "\n");
                 } // finished adding postings for all docs in file
 
@@ -492,7 +501,7 @@ public class Indexer {
          * @param posting_id id of posting (count)
          * @param termsInDocs dictionary that maps each term to all the docs it was found in, including positions.
          */
-        synchronized private void write_posting(int posting_id, HashMap<String, LinkedList<ArrayList<String>>> termsInDocs) throws IOException {
+        synchronized private void write_posting(int posting_id, HashMap<String, LinkedList<String[]>> termsInDocs) throws IOException {
             String[] postingPath = {index_path, "postings\\temp", String.valueOf(posting_id)};
             FileWriter fstream = new FileWriter(String.join("\\", postingPath), true);
             BufferedWriter out = new BufferedWriter(fstream);
@@ -500,28 +509,16 @@ public class Indexer {
 
             // Go through all terms in temporal posting in sorted order
             for (String term : terms) {
-                LinkedList<ArrayList<String>> docsWithTerm = termsInDocs.get(term);
+                LinkedList<String[]> docsWithTerm = termsInDocs.get(term);
                 out.write(term + "\n");
                 String upperLowerCase = ""; // will be updated
                 int df = 0; // term's doc frequency
                 int cf = 0; // term's frequency in temporal posting
-                for (ArrayList<String> docEntry : docsWithTerm) {
+                for (String[] docEntry : docsWithTerm) {
+                    upperLowerCase = docEntry[1];
                     df++;
-                    Iterator<String> iterator = docEntry.iterator();
-                    String docName = iterator.next();
-                    upperLowerCase = iterator.next();
-                    String inDocTitle = iterator.next();
-                    StringBuilder positions = new StringBuilder();
-                    positions.append(iterator.next()); // first position without " "
-                    int tf = 1;
-                    while (iterator.hasNext()) {
-                        positions.append(" ").append(iterator.next());
-                        tf++;
-                    }
-                    positions.append("\n");
-                    cf += tf;
-                    out.write(String.join("|", docName, inDocTitle,
-                            Integer.toString(tf), positions.toString()));
+                    cf += Integer.parseInt(docEntry[3]);
+                    out.write(String.join("|", docEntry[0], docEntry[2], docEntry[3], docEntry[4], "\n"));
                 }
                 out.newLine();
                 if (upperLowerCase.equals("L") && !Character.isDigit(term.charAt(0))) term = term.toLowerCase();
