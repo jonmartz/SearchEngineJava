@@ -168,9 +168,7 @@ public class Controller implements Initializable {
      */
     public void loadDictionary() {
         try{
-            commentsBox.setFill(Paint.valueOf("GREEN"));
-            commentsBox.setText("Loading dictionary...");
-            commentsBox.setVisible(true);
+            showComment("GREEN", "Loading dictionary...");
             statsVisible(false);
             dictionaryView.setItems(null);
 
@@ -206,11 +204,9 @@ public class Controller implements Initializable {
             totalTimeText.setVisible(false);
 
         } catch (Exception e) {
-            e.printStackTrace();
+//            e.printStackTrace();
             dictionary = null;
-            commentsBox.setFill(Paint.valueOf("RED"));
-            commentsBox.setText("Couldn't load dictionary!");
-            commentsBox.setVisible(true);
+            showComment("RED", e.getMessage());
         }
     }
 
@@ -222,15 +218,24 @@ public class Controller implements Initializable {
      */
     public void createIndex() {
         try{
-            commentsBox.setFill(Paint.valueOf("GREEN"));
-            commentsBox.setText("Creating index...");
-            commentsBox.setVisible(true);
+            // Get index path
+            String indexPath = "";
+            if (useStemming.isSelected()) indexPath = this.indexPath + "\\WithStemming";
+            else indexPath = this.indexPath + "\\WithoutStemming";
+
+            // In case index already exists
+            if (Files.exists(Paths.get(indexPath))) {
+                String text = "Index already exists in folder. Do you want to delete it?";
+                if (getResultFromWarning(text) == ButtonType.NO) return;
+            }
+
+            indexer = new Indexer(indexPath, stopWordsPath);
+            dictionary = null;
+
+            // Modify GUI
+            showComment("GREEN", "Creating index...");
             statsVisible(false);
             dictionaryView.setItems(null);
-
-            if (useStemming.isSelected()) indexer = new Indexer(indexPath + "\\WithStemming", stopWordsPath);
-            else indexer = new Indexer(indexPath + "\\WithoutStemming", stopWordsPath);
-            dictionary = null;
 
             // Run indexer on thread so gui can work
             Thread thread = new Thread(new Task<Void>() {
@@ -245,10 +250,30 @@ public class Controller implements Initializable {
             thread.start();
         } catch (Exception e) {
             indexer = null;
-            commentsBox.setFill(Paint.valueOf("RED"));
-            commentsBox.setText("Couldn't create index!");
-            commentsBox.setVisible(true);
+            showComment("RED", e.getMessage());
         }
+    }
+
+    /**
+     * Show warning and ask for user's confirmation
+     * @param text of warning
+     * @return user's answer
+     */
+    private ButtonType getResultFromWarning(String text){
+        Alert alert = new Alert(Alert.AlertType.WARNING, text, ButtonType.YES, ButtonType.NO);
+        alert.showAndWait();
+        return alert.getResult();
+    }
+
+    /**
+     * Display a comment in the comment's box
+     * @param color of comment
+     * @param text of comment
+     */
+    private void showComment(String color, String text) {
+        commentsBox.setFill(Paint.valueOf(color));
+        commentsBox.setText(text);
+        commentsBox.setVisible(true);
     }
 
     /**
@@ -352,12 +377,18 @@ public class Controller implements Initializable {
         try {
 //            Path directory = Paths.get(path);
             Path directory = Paths.get(indexPath);
-            if (Files.exists(directory)){
-                Indexer.removeDir(directory);
-                new File(indexPath).mkdirs();
-                indexer = null;
-                statsVisible(false);
-                commentsBox.setVisible(false);
+
+            // In case index already exists
+            if (Files.exists(directory)) {
+                String text = "Index already exists in folder. Do you want to delete it?";
+                if (getResultFromWarning(text) == ButtonType.NO) return;
+                else {
+                    Indexer.removeDir(directory);
+                    new File(indexPath).mkdirs();
+                    indexer = null;
+                    statsVisible(false);
+                    commentsBox.setVisible(false);
+                }
             }
         } catch (Exception e) {
             commentsBox.setFill(Paint.valueOf("RED"));

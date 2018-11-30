@@ -3,7 +3,6 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.parser.Parser;
 import org.jsoup.select.Elements;
-
 import java.io.IOException;
 import java.util.*;
 
@@ -75,8 +74,6 @@ public class Parse {
         this.stopPrefixes = stopPrefixes;
         this.stopSuffixes = stopSuffixes;
         //todo: add language index
-        tokens = new LinkedList<>();
-        terms = new LinkedList<>();
 
     }
 
