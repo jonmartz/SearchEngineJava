@@ -2,6 +2,7 @@ import java.io.*;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.*;
+import java.util.concurrent.*;
 
 /**
  * Responsible of building the inverted index for a corpus (data-set).
@@ -11,26 +12,23 @@ public class Indexer {
     /**
      * stop words data
      */
-    private HashSet<String> stop_words;
+    private HashSet<String> stopWords;
     /**
      * city data
      */
-    private HashMap<String, String[]> cities_dictionary;
+    private HashMap<String, String[]> citiesDictionary;
     /**
      * data of cities found in corpus
      */
-    private HashMap<String, String[]> cities_of_docs;
-//    private ConcurrentHashMap<String, String[]> cities_of_docs;
+    private HashMap<String, String[]> cityIndex;
     /**
      * term dictionary of whole corpus
      */
-        private HashMap<String, long[]> dictionary;
-//    private ConcurrentHashMap<String, long[]> dictionary;
+    private HashMap<String, long[]> dictionary;
     /**
      * document data
      */
-        private ArrayList<String> documents_in_corpus;
-//    private BlockingDeque<String> documents_in_corpus;
+    private ArrayList<String> documentIndex;
     /**
      * path of index directory
      */
@@ -38,7 +36,7 @@ public class Indexer {
     /**
      * true to use stemming, false otherwise
      */
-    private boolean use_stemming;
+    private boolean useStemming;
     /**
      * files to write in each temporal posting
      */
@@ -68,8 +66,8 @@ public class Indexer {
      */
     public Indexer(String index_path, String stop_words_path) throws IOException {
         this.index_path = index_path;
-        this.cities_dictionary = Cities.get_cities_dictionary();
-        this.stop_words = getStopWords(stop_words_path);
+        this.citiesDictionary = Cities.get_cities_dictionary();
+        this.stopWords = getStopWords(stop_words_path);
     }
 
     /**
@@ -92,15 +90,15 @@ public class Indexer {
         long start = System.currentTimeMillis();
 
         this.files_per_posting = files_per_posting;
-        this.use_stemming = use_stemming;
+        this.useStemming = use_stemming;
 
         //todo: add concurrency with local data structures
-//        documents_in_corpus = new LinkedBlockingDeque<>();
+//        documentIndex = new LinkedBlockingDeque<>();
 //        dictionary = new ConcurrentHashMap<>();
-//        cities_of_docs = new ConcurrentHashMap<>();
-        documents_in_corpus = new ArrayList<>();
+//        cityIndex = new ConcurrentHashMap<>();
+        documentIndex = new ArrayList<>();
         dictionary = new HashMap<>();
-        cities_of_docs = new HashMap<>();
+        cityIndex = new HashMap<>();
 
         // Create postings dir
         Path directory = Paths.get(index_path);
@@ -127,24 +125,53 @@ public class Indexer {
             if (i == taskCount) i = 0;
         }
 
-        for (Task task : tasks) task.run();
+//        for (Task task : tasks) task.run();
 
-//        ThreadPoolExecutor executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(taskCount);
-//        for (Task task : tasks) executor.execute(task);
-//        try {
+        // run tasks
+        ThreadPoolExecutor executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(taskCount);
+        List<Future<TaskResult>> taskResults = new ArrayList<>();
+        for (Task task : tasks) taskResults.add(executor.submit(task));
+        try {
+            // wait for tasks to finish
 //            executor.shutdown();
 //            executor.awaitTermination(1, TimeUnit.HOURS);
-//        } catch (InterruptedException e) {
-//            e.printStackTrace();
-//        }
 
-        documentCount = documents_in_corpus.size();
+            // merge task results
+            for (Future<TaskResult> future : taskResults){
+                TaskResult taskResult = future.get();
+
+                // merge doc index
+                documentIndex.addAll(taskResult.documents);
+                taskResult.documents = null;
+
+                // merge cities index
+                for (Map.Entry<String, String[]> entry : taskResult.cities.entrySet()){
+                    cityIndex.put(entry.getKey(), entry.getValue());
+                }
+
+                //todo: change ArrayList of term postings to String[]
+
+                // merge dictionaries
+                for (Map.Entry<String, long[]> entry : taskResult.dictionary.entrySet()){
+                    String term = entry.getKey();
+                    long[] newTermData = entry.getValue();
+                    updateDictionary(term, newTermData[0], newTermData[1], dictionary);
+                }
+            }
+            executor.shutdown();
+
+        } catch (InterruptedException | ExecutionException e) {
+            e.printStackTrace();
+        }
+
+        // Write indexes to disk
+        documentCount = documentIndex.size();
         writeDocumentsIndex();
         writeCityIndex();
 
         // Free up memory for merging
-        documents_in_corpus.clear();
-        cities_of_docs.clear();
+        documentIndex.clear();
+        cityIndex.clear();
 
         long mergeStart = System.currentTimeMillis();
 
@@ -158,6 +185,36 @@ public class Indexer {
 
         long time = System.currentTimeMillis() - start;
         System.out.println("total time: " + time);
+    }
+
+    /**
+     * Updates a term's data in dictionary, while taking care of the Upper/LowerCase rules.
+     * If the term doesn't exist in dictionary, add it.
+     * @param term to update
+     * @param df doc frequency to add to term's data
+     * @param cf total corpus frequency to add to term's data
+     * @param dictionary to update
+     */
+    private void updateDictionary(String term, long df, long cf , HashMap<String, long[]> dictionary) {
+        boolean isLowerCase = term.equals(term.toLowerCase());
+        term = term.toUpperCase(); // to make process easier
+        long[] termData = dictionary.get(term);
+        if (termData != null) {
+            // term in dictionary is in uppercase
+            if (isLowerCase) {
+                // but now showed in lowercase, so must update dictionary
+                dictionary.remove(term);
+                dictionary.put(term.toLowerCase(), termData);
+            }
+        }
+        else if ((termData = dictionary.get(term.toLowerCase())) == null){
+            // term is not in dictionary, either in lowercase or uppercase
+            termData = new long[3];
+            if (isLowerCase) term = term.toLowerCase();
+            dictionary.put(term, termData);
+        }
+        termData[0] += df;
+        termData[1] += cf;
     }
 
     /**
@@ -210,12 +267,32 @@ public class Indexer {
     }
 
     /**
+     * Holds the resuts from a task
+     */
+    private class TaskResult{
+        HashMap<String, String[]> cities;
+        HashMap<String, long[]> dictionary;
+        ArrayList<String> documents;
+
+        public TaskResult(HashMap<String, String[]> cities, HashMap<String, long[]> dictionary, ArrayList<String> documents) {
+            this.cities = cities;
+            this.dictionary = dictionary;
+            this.documents = documents;
+        }
+    }
+
+    /**
      * Represents a task that will index a group of files from corpus
      */
-    private class Task implements Runnable {
+    private class Task implements Callable<TaskResult> {
 
-        private int id;
-        private List<String> filePaths; // files to index
+        private int id; // task id, to not overwrite other tasks' postings
+        private List<String> filePaths = new ArrayList<>(); // files to index
+
+        // partial indexes (only from part of corpus)
+        private HashMap<String, String[]> partialCitiesOfDocs = new HashMap<>();
+        private HashMap<String, long[]> partialDictionary = new HashMap<>();
+        private ArrayList<String> partialDocumentsInCorpus = new ArrayList<>();
 
         /**
          * Constructor
@@ -223,14 +300,13 @@ public class Indexer {
          */
         Task(int id) {
             this.id = id;
-            this.filePaths = new ArrayList<>();
         }
 
         /**
          * will create the temporal postings for all files in filePaths
          */
         @Override
-        public void run() {
+        public TaskResult call() {
 
             System.out.println("task " + id);
 
@@ -247,7 +323,7 @@ public class Indexer {
                 ArrayList<Doc> docs = null;
 
                 // Get docs with all their terms
-                Parse parser = new Parse(stop_words, cities_dictionary, cities_of_docs ,stem_collection, use_stemming);
+                Parse parser = new Parse(stopWords, citiesDictionary, partialCitiesOfDocs, stem_collection, useStemming);
                 try {
                     docs = parser.getParsedDocs(filePath);
                 } catch (IOException e) {
@@ -299,7 +375,7 @@ public class Indexer {
                     // Add document row to the document index
                     String[] line = {doc.name, doc.file, String.valueOf(doc.positionInFile),
                             String.valueOf(termPosition), String.valueOf(max_term_frequency), doc.city};
-                    documents_in_corpus.add(String.join("|", line) + "\n");
+                    partialDocumentsInCorpus.add(String.join("|", line) + "\n");
                 } // finished adding postings for all docs in file
 
                 // if reached max files per posting
@@ -324,70 +400,55 @@ public class Indexer {
             }
             long taskTime = System.currentTimeMillis() - taskStart;
             System.out.println("task time: " + taskTime);
+
+            return new TaskResult(partialCitiesOfDocs, partialDictionary, partialDocumentsInCorpus);
         }
-    }
 
-    /**
-     * Writes a single temporal posting to disk for all files indexed up to now, and removes them from memory.
-     * @param posting_id id of posting (count)
-     * @param termsInDocs dictionary that maps each term to all the docs it was found in, including positions.
-     */
-    synchronized private void write_posting(int posting_id, HashMap<String, LinkedList<ArrayList<String>>> termsInDocs) throws IOException {
-        String[] postingPath = {index_path, "postings\\temp", String.valueOf(posting_id)};
-        FileWriter fstream = new FileWriter(String.join("\\", postingPath), true);
-        BufferedWriter out = new BufferedWriter(fstream);
-        SortedSet<String> terms = new TreeSet<>(termsInDocs.keySet());
+        /**
+         * Writes a single temporal posting to disk for all files indexed up to now, and removes them from memory.
+         * @param posting_id id of posting (count)
+         * @param termsInDocs dictionary that maps each term to all the docs it was found in, including positions.
+         */
+        synchronized private void write_posting(int posting_id, HashMap<String, LinkedList<ArrayList<String>>> termsInDocs) throws IOException {
+            String[] postingPath = {index_path, "postings\\temp", String.valueOf(posting_id)};
+            FileWriter fstream = new FileWriter(String.join("\\", postingPath), true);
+            BufferedWriter out = new BufferedWriter(fstream);
+            SortedSet<String> terms = new TreeSet<>(termsInDocs.keySet());
 
-        // Go through all terms in temporal posting in sorted order
-        for (String term : terms) {
-            LinkedList<ArrayList<String>> docsWithTerm = termsInDocs.get(term);
-            out.write(term + "\n");
-            String upperLowerCase = "L"; // will be updated
-            int df = 0; // term's doc frequency
-            int cf = 0; // term's frequency in temporal posting
-            for (ArrayList<String> docEntry : docsWithTerm) {
-                df++;
-                Iterator<String> iterator = docEntry.iterator();
-                String docName = iterator.next();
-                upperLowerCase = iterator.next();
-                String inDocTitle = iterator.next();
-                StringBuilder positions = new StringBuilder();
-                positions.append(iterator.next()); // first position without " "
-                int tf = 1;
-                while (iterator.hasNext()) {
-                    positions.append(" ").append(iterator.next());
-                    tf++;
+            // Go through all terms in temporal posting in sorted order
+            for (String term : terms) {
+                LinkedList<ArrayList<String>> docsWithTerm = termsInDocs.get(term);
+                out.write(term + "\n");
+                String upperLowerCase = "L"; // will be updated
+                int df = 0; // term's doc frequency
+                int cf = 0; // term's frequency in temporal posting
+                for (ArrayList<String> docEntry : docsWithTerm) {
+                    df++;
+                    Iterator<String> iterator = docEntry.iterator();
+                    String docName = iterator.next();
+                    upperLowerCase = iterator.next();
+                    String inDocTitle = iterator.next();
+                    StringBuilder positions = new StringBuilder();
+                    positions.append(iterator.next()); // first position without " "
+                    int tf = 1;
+                    while (iterator.hasNext()) {
+                        positions.append(" ").append(iterator.next());
+                        tf++;
+                    }
+                    positions.append("\n");
+                    cf += tf;
+                    out.write(String.join("|", docName, inDocTitle,
+                            Integer.toString(tf), positions.toString()));
                 }
-                positions.append("\n");
-                cf += tf;
-                out.write(String.join("|", docName, inDocTitle,
-                        Integer.toString(tf), positions.toString()));
-            }
-            out.newLine();
-
-            // update term in dictionary:
-            long[] termData = dictionary.get(term);
-            if (termData != null) {
-                // term in dictionary is in uppercase
-                if (upperLowerCase.equals("L")) {
-                    // but now showed in lowercase, so must update dictionary
-                    dictionary.remove(term);
-                    dictionary.put(term.toLowerCase(), termData);
-                }
-            }
-            else if ((termData = dictionary.get(term.toLowerCase())) == null){
-                // term is not in dictionary, either in lowercase or uppercase
-                termData = new long[3];
+                out.newLine();
                 if (upperLowerCase.equals("L")) term = term.toLowerCase();
-                dictionary.put(term, termData);
+                updateDictionary(term, df, cf, partialDictionary);
             }
-            termData[0] += df;
-            termData[1] += cf;
+            out.close();
+            postingsCount++;
         }
-        out.close();
-        postingsCount++;
     }
-
+    
     /**
      * Is responsible for merging all the temporal postings. The terms in all these
      * postings are in uppercase, but the merger checks weather the terms shows in the
@@ -489,9 +550,9 @@ public class Indexer {
         String[] citiesPath = {index_path, "cities"};
         FileWriter fstream = new FileWriter(String.join("\\", citiesPath), true);
         BufferedWriter out = new BufferedWriter(fstream);
-        SortedSet<String> cities = new TreeSet<>(cities_of_docs.keySet());
+        SortedSet<String> cities = new TreeSet<>(cityIndex.keySet());
         for (String city : cities) {
-            String[] city_data = cities_of_docs.get(city);
+            String[] city_data = cityIndex.get(city);
             String[] line = new String[city_data.length + 1];
             line[0] = city;
             for (int i = 0; i < city_data.length; i++) line[i + 1] = city_data[i];
@@ -528,7 +589,7 @@ public class Indexer {
         FileWriter fstream = new FileWriter(String.join("\\", documentsPath), true);
         BufferedWriter out = new BufferedWriter(fstream);
         out.write("-documentCount=" + documentCount + "\n");
-        for (String line : documents_in_corpus) out.write(line);
+        for (String line : documentIndex) out.write(line);
         out.close();
     }
 }
