@@ -19,7 +19,6 @@ import java.nio.file.Paths;
 import java.text.DecimalFormat;
 import java.util.*;
 
-//todo: add warning before removing index
 
 /**
  * Controls the interaction between the user, the GUI (View) and the Index (Model).

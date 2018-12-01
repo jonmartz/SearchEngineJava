@@ -103,6 +103,7 @@ public class Indexer {
         stopPrefixes.add('(');
         stopPrefixes.add('<');
         stopPrefixes.add('=');
+        stopPrefixes.add(':');
         return stopPrefixes;
     }
 
@@ -122,6 +123,7 @@ public class Indexer {
         stopSuffixes.add(')');
         stopSuffixes.add('>');
         stopSuffixes.add('=');
+        stopSuffixes.add(':');
         return stopSuffixes;
     }
 
@@ -450,9 +452,8 @@ public class Indexer {
 
                         // add position
                         docEntry[4] = termPositions + " " + termPosition;
-                        int tf = Integer.parseInt(docEntry[3]);
-                        tf++;
-                        docEntry[4] = Integer.toString(tf);
+                        int tf = Integer.parseInt(docEntry[3]) + 1;
+                        docEntry[3] = Integer.toString(tf);
                         if (tf > max_tf) max_tf = tf;
                         termPosition++;
                     }
@@ -668,7 +669,7 @@ public class Indexer {
         String[] documentsPath = {index_path, "documents"};
         FileWriter fstream = new FileWriter(String.join("\\", documentsPath), true);
         BufferedWriter out = new BufferedWriter(fstream);
-        out.write("-documentCount=" + documentCount + "\n");
+        out.write("-documentCount=" + (int)documentCount + "\n");
         for (String line : documentIndex) out.write(line);
         out.close();
     }

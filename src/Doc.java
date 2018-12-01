@@ -33,10 +33,6 @@ public class Doc {
      */
     public ArrayList<String> title = new ArrayList<>();
     /**
-     * lines of doc after reading
-     */
-    public ArrayList<String> lines = new ArrayList<>();
-    /**
      * terms of doc after parsing
      */
     public LinkedList<String> terms = new LinkedList<>();

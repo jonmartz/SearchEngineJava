@@ -160,7 +160,7 @@ public class Parse {
             i++;
         }
         city = cleanString(words[0]);
-        if (city.length() > 0) {
+        if (city.length() > 0 && Character.isAlphabetic(city.charAt(0))) {
             cityData = new String[3];
             cityData[0] = "";
             cityData[1] = "";
@@ -220,50 +220,28 @@ public class Parse {
         for (int i = 0; i < length; i++) {
             char character = line.charAt(i);
             switch (character) {
-                case '!':
-                    break;
-                case '@':
-                    break;
-                case ';':
-                    break;
-                case '+':
-                    break;
-                case ':':
-                    break;
-                case '?':
-                    break;
-                case '"':
-                    break;
-                case '*':
-                    break;
-                case '(':
-                    break;
-                case ')':
-                    break;
-                case '<':
-                    break;
-                case '>':
-                    break;
-                case '{':
-                    break;
-                case '}':
-                    break;
-                case '=':
-                    break;
-                case '[':
-                    break;
-                case ']':
-                    break;
-                case '#':
-                    break;
-                case '|':
-                    break;
-                case '&':
-                    break;
-                case ',':
-                    break;
-                case '`':
-                    break;
+                case '!': break;
+                case '@': break;
+                case ';': break;
+                case '+': break;
+//                case ':': break;
+                case '?': break;
+                case '"': break;
+                case '*': break;
+                case '(': break;
+                case ')': break;
+                case '<': break;
+                case '>': break;
+                case '{': break;
+                case '}': break;
+                case '=': break;
+                case '[': break;
+                case ']': break;
+                case '#': break;
+                case '|': break;
+                case '&': break;
+                case ',': break;
+                case '`': break;
                 case ' ': {
                     if (stringBuilder.length() > 0) {
                         try {
