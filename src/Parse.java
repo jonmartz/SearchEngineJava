@@ -3,6 +3,7 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.parser.Parser;
 import org.jsoup.select.Elements;
+
 import java.io.IOException;
 import java.util.*;
 
@@ -321,6 +322,10 @@ public class Parse {
                         if (term.length() == 0) {
                             term = process_dollars(token);
                         }
+
+                        if (term.length() == 0) {
+                            term = process_time(token);
+                        }
                         if (term.length() == 0) {
                             term = process_number(token, false);
                         }
@@ -499,6 +504,47 @@ public class Parse {
         } catch(NumberFormatException | NoSuchElementException | IndexOutOfBoundsException e){
             return "";
         }
+    }
+
+    private String process_time(String token) {
+       try {
+           token = token.toLowerCase();
+           String cToken = token, next_token = tokens.getFirst().toLowerCase(), hour = "";
+           boolean isTowNum = false, isAM = false, amInToken = false, pmInToken = false;
+           if (cToken.length() > 2) {
+               amInToken = token.substring(token.length() - 2, token.length()).equals("am");
+               pmInToken = token.substring(token.length() - 2, token.length()).equals("pm");
+           }
+           if ((cToken.length() > 2 && amInToken) || next_token.equals("am")) {
+               if (amInToken)
+                   cToken = token.substring(0, token.length() - 2);
+               isAM = true;
+           }
+           if ((cToken.length() > 2 && pmInToken) || next_token.equals("pm"))
+               if (pmInToken)
+                   cToken = token.substring(0, token.length() - 2);
+           if (cToken.length() > 1 && Character.isDigit(cToken.charAt(1)) && cToken.charAt(1) < 3) {
+               hour = cToken.substring(0, 2);
+               isTowNum = true;
+           } else
+               hour = "" + cToken.charAt(0);
+           if (!isAM) {
+               int con = Integer.parseInt(hour) + 12;
+               hour = "" + con;
+           }
+           if (cToken.length() > 3 && cToken.contains(":")) {
+               if (isTowNum && cToken.charAt(2) == ':' && Character.isDigit(cToken.charAt(3)) && Character.getNumericValue(cToken.charAt(3)) < 7 && Character.isDigit(cToken.charAt(4)) && Character.getNumericValue(cToken.charAt(4)) <= 9)
+                   hour = hour + ":" + cToken.substring(3, 5);
+               else if (cToken.charAt(1) == ':')
+                   if (Character.isDigit(cToken.charAt(2)) && Character.getNumericValue(cToken.charAt(2)) < 7 && Character.isDigit(cToken.charAt(3)) && Character.getNumericValue(cToken.charAt(3)) <= 9)
+                       hour = hour + ":" + cToken.substring(2, 4);
+           } else
+               hour = hour + ":00";
+           return hour;
+       }
+       catch (NumberFormatException | NoSuchElementException | IndexOutOfBoundsException e) {
+           return "";
+       }
     }
 
     /**
