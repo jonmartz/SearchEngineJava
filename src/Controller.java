@@ -18,6 +18,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.DecimalFormat;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 
 /**
@@ -74,7 +75,7 @@ public class Controller implements Initializable {
     /**
      * dictionary to hold in memory
      */
-    private HashMap<String, long[]> dictionary;
+    private ConcurrentHashMap<String, long[]> dictionary;
 
     /**
      * Initializes the controller.
@@ -181,7 +182,7 @@ public class Controller implements Initializable {
             reader.close();
 
 //            dictionary = new HashMap<>();
-            dictionary = new HashMap<>();
+            dictionary = new ConcurrentHashMap<>();
             reader = new BufferedReader(new FileReader(new File(path + "\\dictionary")));
             while ((line = reader.readLine()) != null){
                 String[] termEntry = line.split("\\|");

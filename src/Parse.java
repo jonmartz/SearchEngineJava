@@ -5,6 +5,7 @@ import org.jsoup.parser.Parser;
 import org.jsoup.select.Elements;
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Is responsible for parsing
@@ -28,7 +29,7 @@ public class Parse {
      * Why? Because stemming takes a very long time, and holding the stems in memory is not a problem
      * considering the time it will save.
      */
-    private HashMap<String, String> stem_collection;
+    private ConcurrentHashMap<String, String> stem_collection;
     /**
      * token list from doc
      */
@@ -57,17 +58,17 @@ public class Parse {
     /**
      * cities than have been found in docs
      */
-    private HashMap<String, String[]> cities_of_docs;
+    private ConcurrentHashMap<String, String[]> cityIndex;
 
     /**
      * Constructor. Creates months, prefixes and suffixes sets.
      * @param stop_words set
      */
-    public Parse(HashSet stop_words, HashMap cities_dictionary, HashMap cities_of_docs, HashMap months,
-                 HashMap stem_collection, HashSet stopSuffixes, HashSet stopPrefixes, boolean use_stemming) {
+    public Parse(HashSet stop_words, HashMap cities_dictionary, ConcurrentHashMap cityIndex, HashMap months,
+                 ConcurrentHashMap stem_collection, HashSet stopSuffixes, HashSet stopPrefixes, boolean use_stemming) {
         this.stop_words = stop_words;
         this.cities_dictionary = cities_dictionary;
-        this.cities_of_docs = cities_of_docs;
+        this.cityIndex = cityIndex;
         this.use_stemming = use_stemming;
         this.stem_collection = stem_collection;
         this.months = months;
@@ -150,7 +151,7 @@ public class Parse {
         while (i < words.length && i < 5){
             cityData = cities_dictionary.get(city);
             if (cityData != null){
-                cities_of_docs.put(city, cityData);
+                cityIndex.put(city, cityData);
                 doc.city = city;
                 terms.add(city);
                 return;
@@ -165,7 +166,7 @@ public class Parse {
             cityData[0] = "";
             cityData[1] = "";
             cityData[2] = "";
-            cities_of_docs.put(city, cityData);
+            cityIndex.put(city, cityData);
             doc.city = city;
             terms.add(city);
         }

@@ -35,9 +35,9 @@
                                 <RowConstraints maxHeight="45.0" minHeight="10.0" prefHeight="35.0" vgrow="SOMETIMES" />
                                 <RowConstraints maxHeight="45.0" minHeight="10.0" prefHeight="33.0" vgrow="SOMETIMES" />
                                 <RowConstraints maxHeight="45.0" minHeight="10.0" prefHeight="35.0" />
-                        <RowConstraints maxHeight="45.0" minHeight="10.0" prefHeight="30.0" />
-                        <RowConstraints maxHeight="45.0" minHeight="10.0" prefHeight="30.0" />
-                        <RowConstraints maxHeight="45.0" minHeight="10.0" prefHeight="30.0" />
+                                <RowConstraints maxHeight="45.0" minHeight="10.0" prefHeight="30.0" />
+                                <RowConstraints maxHeight="45.0" minHeight="10.0" prefHeight="30.0" />
+                                <RowConstraints maxHeight="45.0" minHeight="10.0" prefHeight="30.0" />
                             </rowConstraints>
                             <children>
                                 <Text fill="#646464" strokeType="OUTSIDE" strokeWidth="0.0" text="Select paths:" />
@@ -59,10 +59,10 @@
                                         <Insets left="5.0" />
                                     </GridPane.margin>
                                 </Text>
-                        <CheckBox fx:id="useStemming" contentDisplay="RIGHT" mnemonicParsing="false" text="Use stemming" GridPane.rowIndex="4" />
-                        <Button fx:id="createIndexButton" disable="true" mnemonicParsing="false" onAction="#createIndex" prefHeight="25.0" prefWidth="149.0" style="-fx-background-color: #2A5058;" textFill="WHITE" text="Create Index" GridPane.rowIndex="6" />
+                                <CheckBox fx:id="useStemming" contentDisplay="RIGHT" mnemonicParsing="false" text="Use stemming" GridPane.rowIndex="4" />
+                                <Button fx:id="createIndexButton" disable="true" mnemonicParsing="false" onAction="#createIndex" prefHeight="25.0" prefWidth="149.0" style="-fx-background-color: #2A5058;" textFill="WHITE" text="Create Index" GridPane.rowIndex="6" />
                                 <Separator orientation="VERTICAL" prefHeight="200.0" GridPane.columnIndex="2" GridPane.rowSpan="7" />
-                        <Button fx:id="loadDictionaryButton" disable="true" mnemonicParsing="false" onAction="#loadDictionary" prefHeight="25.0" prefWidth="125.0" style="-fx-background-color: #2A5058;"  textFill="WHITE" text="Load Dictionary" GridPane.rowIndex="5" />
+                                <Button fx:id="loadDictionaryButton" disable="true" mnemonicParsing="false" onAction="#loadDictionary" prefHeight="25.0" prefWidth="125.0" style="-fx-background-color: #2A5058;"  textFill="WHITE" text="Load Dictionary" GridPane.rowIndex="5" />
                             </children>
                             <padding>
                                 <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
@@ -71,91 +71,91 @@
                     </children>
                 </VBox>
             </left>
-         <top>
-            <MenuBar BorderPane.alignment="CENTER">
-              <menus>
-                <Menu mnemonicParsing="false" text="Options">
-                  <items>
-                    <MenuItem mnemonicParsing="false" text="Close" />
-                  </items>
-                </Menu>
-                <Menu mnemonicParsing="false" text="Language">
-                  <items>
-                    <MenuItem mnemonicParsing="false">
-                           <graphic>
-                              <ChoiceBox fx:id="languageChoicebox" prefWidth="150.0" />
-                           </graphic>
-                        </MenuItem>
-                  </items>
-                </Menu>
-                <Menu mnemonicParsing="false" text="Help">
-                  <items>
-                    <MenuItem mnemonicParsing="false" text="About" />
-                  </items>
-                </Menu>
-              </menus>
-            </MenuBar>
-         </top>
-         <center>
-            <GridPane prefHeight="225.0" prefWidth="267.0" BorderPane.alignment="CENTER">
-              <columnConstraints>
-                <ColumnConstraints hgrow="SOMETIMES" maxWidth="162.0" minWidth="10.0" prefWidth="133.0" />
-                <ColumnConstraints hgrow="SOMETIMES" maxWidth="204.0" minWidth="10.0" prefWidth="104.0" />
-                  <ColumnConstraints hgrow="SOMETIMES" maxWidth="204.0" minWidth="0.0" prefWidth="10.0" />
-              </columnConstraints>
-              <rowConstraints>
-                  <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
-                <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
-                <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
-                <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
-                  <RowConstraints minHeight="5.0" prefHeight="5.0" vgrow="SOMETIMES" />
-                  <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
-                  <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
-              </rowConstraints>
-               <children>
-                  <Text fx:id="docCountText" strokeType="OUTSIDE" strokeWidth="0.0" text="Number of documents:" GridPane.rowIndex="1" />
-                  <Text fx:id="docCountValue" strokeType="OUTSIDE" strokeWidth="0.0" text="docCount" GridPane.columnIndex="1" GridPane.rowIndex="1">
-                     <font>
-                        <Font name="System Bold" size="12.0" />
-                     </font>
-                  </Text>
-                  <Text fx:id="termCountText" strokeType="OUTSIDE" strokeWidth="0.0" text="Number of terms:" GridPane.rowIndex="2" />
-                  <Text fx:id="termCountValue" strokeType="OUTSIDE" strokeWidth="0.0" text="termCount" GridPane.columnIndex="1" GridPane.rowIndex="2">
-                      <font>
-                          <Font name="System Bold" size="12.0" />
-                      </font>
-                  </Text>
-                  <Text fx:id="totalTimeText" strokeType="OUTSIDE" strokeWidth="0.0" text="Indexing elapsed time:" GridPane.rowIndex="3" />
-                  <Text fx:id="totalTimeValue" strokeType="OUTSIDE" strokeWidth="0.0" text="totalTime" GridPane.columnIndex="1" GridPane.rowIndex="3">
-                      <font>
-                          <Font name="System Bold" size="12.0" />
-                      </font>
-                  </Text>
-                  <Button fx:id="dictionaryViewButton" mnemonicParsing="false" onAction="#viewDictionary" style="-fx-background-color: #2A5058;" text="View dictionary" textFill="WHITE" GridPane.rowIndex="5" />
-                  <Button fx:id="resetButton" mnemonicParsing="false" onAction="#resetIndex" style="-fx-background-color: #B22222;" text="Reset index" textFill="WHITE" GridPane.columnIndex="1" GridPane.rowIndex="5" />
-                  <Text fill="#646464" strokeType="OUTSIDE" strokeWidth="0.0" text="Index stats:" />
-                  <Separator prefWidth="200.0" GridPane.columnSpan="2" GridPane.rowIndex="4" />
-                  <Separator halignment="RIGHT" orientation="VERTICAL" prefHeight="200.0" GridPane.columnIndex="2" GridPane.rowSpan="7">
-                     <GridPane.margin>
-                        <Insets left="10.0" />
-                     </GridPane.margin>
-                  </Separator>
-                  <Text fx:id="commentsBox" fill="GREEN" strokeType="OUTSIDE" strokeWidth="0.0" text="CommentsBox" GridPane.rowIndex="6" />
-               </children>
-               <padding>
-                  <Insets right="10.0" />
-               </padding>
-            </GridPane>
-         </center>
-         <right>
-            <TableView fx:id="dictionaryView" prefHeight="225.0" prefWidth="362.0" BorderPane.alignment="CENTER">
-              <columns>
-                <TableColumn fx:id="termColumn" prefWidth="167.0" text="Term" />
-                <TableColumn fx:id="dfColumn" prefWidth="96.0" text="Df" />
-                  <TableColumn fx:id="cfColumn" minWidth="0.0" prefWidth="98.0" text="Cf" />
-              </columns>
-            </TableView>
-         </right></BorderPane>
+            <top>
+                <MenuBar BorderPane.alignment="CENTER">
+                    <menus>
+                        <Menu mnemonicParsing="false" text="Options">
+                            <items>
+                                <MenuItem mnemonicParsing="false" text="Close" />
+                            </items>
+                        </Menu>
+                        <Menu mnemonicParsing="false" text="Language">
+                            <items>
+                                <MenuItem mnemonicParsing="false">
+                                    <graphic>
+                                        <ChoiceBox fx:id="languageChoicebox" prefWidth="150.0" />
+                                    </graphic>
+                                </MenuItem>
+                            </items>
+                        </Menu>
+                        <Menu mnemonicParsing="false" text="Help">
+                            <items>
+                                <MenuItem mnemonicParsing="false" text="About" />
+                            </items>
+                        </Menu>
+                    </menus>
+                </MenuBar>
+            </top>
+            <center>
+                <GridPane prefHeight="225.0" prefWidth="267.0" BorderPane.alignment="CENTER">
+                    <columnConstraints>
+                        <ColumnConstraints hgrow="SOMETIMES" maxWidth="162.0" minWidth="10.0" prefWidth="133.0" />
+                        <ColumnConstraints hgrow="SOMETIMES" maxWidth="204.0" minWidth="10.0" prefWidth="104.0" />
+                        <ColumnConstraints hgrow="SOMETIMES" maxWidth="204.0" minWidth="0.0" prefWidth="10.0" />
+                    </columnConstraints>
+                    <rowConstraints>
+                        <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+                        <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+                        <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+                        <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+                        <RowConstraints minHeight="5.0" prefHeight="5.0" vgrow="SOMETIMES" />
+                        <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+                        <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+                    </rowConstraints>
+                    <children>
+                        <Text fx:id="docCountText" strokeType="OUTSIDE" strokeWidth="0.0" text="Number of documents:" GridPane.rowIndex="1" />
+                        <Text fx:id="docCountValue" strokeType="OUTSIDE" strokeWidth="0.0" text="docCount" GridPane.columnIndex="1" GridPane.rowIndex="1">
+                            <font>
+                                <Font name="System Bold" size="12.0" />
+                            </font>
+                        </Text>
+                        <Text fx:id="termCountText" strokeType="OUTSIDE" strokeWidth="0.0" text="Number of terms:" GridPane.rowIndex="2" />
+                        <Text fx:id="termCountValue" strokeType="OUTSIDE" strokeWidth="0.0" text="termCount" GridPane.columnIndex="1" GridPane.rowIndex="2">
+                            <font>
+                                <Font name="System Bold" size="12.0" />
+                            </font>
+                        </Text>
+                        <Text fx:id="totalTimeText" strokeType="OUTSIDE" strokeWidth="0.0" text="Indexing elapsed time:" GridPane.rowIndex="3" />
+                        <Text fx:id="totalTimeValue" strokeType="OUTSIDE" strokeWidth="0.0" text="totalTime" GridPane.columnIndex="1" GridPane.rowIndex="3">
+                            <font>
+                                <Font name="System Bold" size="12.0" />
+                            </font>
+                        </Text>
+                        <Button fx:id="dictionaryViewButton" mnemonicParsing="false" onAction="#viewDictionary" style="-fx-background-color: #2A5058;" text="View dictionary" textFill="WHITE" GridPane.rowIndex="5" />
+                        <Button fx:id="resetButton" mnemonicParsing="false" onAction="#resetIndex" style="-fx-background-color: #B22222;" text="Reset index" textFill="WHITE" GridPane.columnIndex="1" GridPane.rowIndex="5" />
+                        <Text fill="#646464" strokeType="OUTSIDE" strokeWidth="0.0" text="Index stats:" />
+                        <Separator prefWidth="200.0" GridPane.columnSpan="2" GridPane.rowIndex="4" />
+                        <Separator halignment="RIGHT" orientation="VERTICAL" prefHeight="200.0" GridPane.columnIndex="2" GridPane.rowSpan="7">
+                            <GridPane.margin>
+                                <Insets left="10.0" />
+                            </GridPane.margin>
+                        </Separator>
+                        <Text fx:id="commentsBox" fill="GREEN" strokeType="OUTSIDE" strokeWidth="0.0" text="CommentsBox" GridPane.rowIndex="6" />
+                    </children>
+                    <padding>
+                        <Insets right="10.0" />
+                    </padding>
+                </GridPane>
+            </center>
+            <right>
+                <TableView fx:id="dictionaryView" prefHeight="225.0" prefWidth="362.0" BorderPane.alignment="CENTER">
+                    <columns>
+                        <TableColumn fx:id="termColumn" prefWidth="167.0" text="Term" />
+                        <TableColumn fx:id="dfColumn" prefWidth="96.0" text="Df" />
+                        <TableColumn fx:id="cfColumn" minWidth="0.0" prefWidth="98.0" text="Cf" />
+                    </columns>
+                </TableView>
+            </right></BorderPane>
     </children>
     <columnConstraints>
         <ColumnConstraints />

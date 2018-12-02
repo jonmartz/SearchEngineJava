@@ -34,15 +34,15 @@ public class Indexer {
     /**
      * data of cities found in corpus
      */
-    private HashMap<String, String[]> cityIndex;
+    private ConcurrentHashMap<String, String[]> cityIndex;
     /**
      * term dictionary of whole corpus
      */
-    private HashMap<String, long[]> dictionary;
+    private ConcurrentHashMap<String, long[]> dictionary;
     /**
      * document data
      */
-    private ArrayList<String> documentIndex;
+    private BlockingDeque<String> documentIndex;
     /**
      * path of index directory
      */
@@ -71,6 +71,10 @@ public class Indexer {
      * size of dictionary
      */
     public double dictionarySize;
+    /**
+     * Collection of stems to not stem token twice
+     */
+    private ConcurrentHashMap<String, String> stemCollection;
 
     /**
      * Constructor. Creating a Indexer doesn't start the indexing process
@@ -163,7 +167,7 @@ public class Indexer {
      * Get the indexer's dictionary
      * @return the dictionary
      */
-    public HashMap getDictionary(){
+    public ConcurrentHashMap getDictionary(){
         return dictionary;
     }
 
@@ -181,9 +185,10 @@ public class Indexer {
         this.files_per_posting = files_per_posting;
         this.useStemming = use_stemming;
 
-        documentIndex = new ArrayList<>();
-        dictionary = new HashMap<>();
-        cityIndex = new HashMap<>();
+        documentIndex = new LinkedBlockingDeque<>();
+        dictionary = new ConcurrentHashMap<>();
+        cityIndex = new ConcurrentHashMap<>();
+        stemCollection = new ConcurrentHashMap<>();
 
         // Create postings dir
         Path directory = Paths.get(index_path);
@@ -194,6 +199,7 @@ public class Indexer {
 
         this.taskCount = Runtime.getRuntime().availableProcessors();
         Task[] tasks = new Task[taskCount];
+
 
         // Create tasks
         for (int id = 0; id < taskCount; id++) {
@@ -214,32 +220,11 @@ public class Indexer {
 
         // run tasks
         ThreadPoolExecutor executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(taskCount);
-        List<Future<TaskResult>> taskResults = new ArrayList<>();
-        for (Task task : tasks) taskResults.add(executor.submit(task));
+        for (Task task : tasks) executor.execute(task);
         try {
-            // merge task results
-            for (Future<TaskResult> future : taskResults){
-                TaskResult taskResult = future.get();
-
-                // merge doc index
-                documentIndex.addAll(taskResult.documents);
-                taskResult.documents = null;
-
-                // merge cities index
-                for (Map.Entry<String, String[]> entry : taskResult.cities.entrySet()){
-                    cityIndex.put(entry.getKey(), entry.getValue());
-                }
-
-                // merge dictionaries
-                for (Map.Entry<String, long[]> entry : taskResult.dictionary.entrySet()){
-                    String term = entry.getKey();
-                    long[] newTermData = entry.getValue();
-                    updateDictionary(term, newTermData[0], newTermData[1], dictionary);
-                }
-            }
             executor.shutdown();
-
-        } catch (InterruptedException | ExecutionException e) {
+            executor.awaitTermination(1, TimeUnit.HOURS);
+        } catch (InterruptedException e) {
             e.printStackTrace();
         }
 
@@ -276,7 +261,7 @@ public class Indexer {
      * @param cf total corpus frequency to add to term's data
      * @param dictionary to update
      */
-    private void updateDictionary(String term, long df, long cf , HashMap<String, long[]> dictionary) {
+    private void updateDictionary(String term, long df, long cf , ConcurrentHashMap<String, long[]> dictionary) {
         Character firstChar = term.charAt(0);
         boolean isLowerCase = !(Character.isDigit(firstChar) || Character.isUpperCase(firstChar));
         if (!Character.isDigit(firstChar)) term = term.toUpperCase(); // to make the function's logic simpler
@@ -367,15 +352,10 @@ public class Indexer {
     /**
      * Represents a task that will index a group of files from corpus
      */
-    private class Task implements Callable<TaskResult> {
+    private class Task implements Runnable {
 
         private int id; // task id, to not overwrite other tasks' postings
         private List<String> filePaths = new ArrayList<>(); // files to index
-
-        // partial indexes (only from part of corpus)
-        private HashMap<String, String[]> partialCitiesOfDocs = new HashMap<>();
-        private HashMap<String, long[]> partialDictionary = new HashMap<>();
-        private ArrayList<String> partialDocumentsInCorpus = new ArrayList<>();
 
         /**
          * Constructor
@@ -389,13 +369,13 @@ public class Indexer {
          * will create the temporal postings for all files in filePaths
          */
         @Override
-        public TaskResult call() {
+        public void run() {
 
             System.out.println("task " + id);
 
             long taskStart = System.currentTimeMillis();
 
-            HashMap<String, String> stem_collection = new HashMap<>(); // save stems along the way
+//            HashMap<String, String> stem_collection = new HashMap<>(); // save stems along the way
             HashMap<String, LinkedList<String[]>> termsInDocs = new HashMap<>();
             int fileCount = 0;
             int posting_id = id;
@@ -406,8 +386,8 @@ public class Indexer {
                 ArrayList<Doc> docs = null;
 
                 // Get docs with all their terms
-                Parse parser = new Parse(stopWords, citiesDictionary, partialCitiesOfDocs, months,
-                        stem_collection, stopSuffixes, stopPrefixes, useStemming);
+                Parse parser = new Parse(stopWords, citiesDictionary, cityIndex, months,
+                        stemCollection, stopSuffixes, stopPrefixes, useStemming);
                 try {
                     docs = parser.getParsedDocs(filePath);
                 } catch (IOException e) {
@@ -468,7 +448,7 @@ public class Indexer {
                     // docname|file|positionInFile|termCount|maxTf|city|language
                     String[] line = {doc.name, doc.file, String.valueOf(doc.positionInFile),
                             String.valueOf(termPosition), String.valueOf(max_tf), doc.city, doc.language};
-                    partialDocumentsInCorpus.add(String.join("|", line) + "\n");
+                    documentIndex.add(String.join("|", line) + "\n");
                 } // finished adding postings for all docs in file
 
                 // if reached max files per posting
@@ -494,7 +474,7 @@ public class Indexer {
             long taskTime = System.currentTimeMillis() - taskStart;
             System.out.println("task time: " + taskTime);
 
-            return new TaskResult(partialCitiesOfDocs, partialDictionary, partialDocumentsInCorpus);
+//            return new TaskResult(partialCitiesOfDocs, partialDictionary, partialDocumentsInCorpus);
         }
 
         /**
@@ -523,7 +503,7 @@ public class Indexer {
                 }
                 out.newLine();
                 if (upperLowerCase.equals("L") && !Character.isDigit(term.charAt(0))) term = term.toLowerCase();
-                updateDictionary(term, df, cf, partialDictionary);
+                updateDictionary(term, df, cf, dictionary);
             }
             out.close();
             postingsCount++;
