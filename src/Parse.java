@@ -3,7 +3,7 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.parser.Parser;
 import org.jsoup.select.Elements;
-import java.io.IOException;
+
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -80,63 +80,76 @@ public class Parse {
     /**
      * Parse all the documents from file in file_path. Gets a Doc array from ReadFile where each Doc.lines
      * is a list of the lines in doc, but each Doc.terms is still null.
-     * @param file_path of file to parse
+     * @param docString String of doc to be parsed (contains all tags between <DOC> and </DOC> including that tag)
      * @return array of Docs where each Doc.terms is the list of the doc's terms
      */
-    public ArrayList<Doc> getParsedDocs(String file_path) throws IOException {
+    public Doc getParsedDoc(String docString) {
 
-        // each docString is a string containing everything from <DOC> to </DOC>
-        ArrayList<String> docStrings = ReadFile.read(file_path); //
-        if (docStrings.size() == 0) return null;
+        Doc doc = new Doc();
+        tokens = new LinkedList<>();
+        terms = new LinkedList<>();
 
-        // get filename
-        String[] splittedPath = file_path.split("\\\\");
-        String fileName = splittedPath[splittedPath.length-1];
 
-        // docs is a list of all documents in file
-        ArrayList<Doc> docs = new ArrayList<>();
+        // Get structure from XML
+        Document docStructure = Jsoup.parse(docString, "", Parser.xmlParser());
 
-        int docPositionInFile = 0;
-        for (String docString : docStrings) {
 
-            tokens = new LinkedList<>();
-            terms = new LinkedList<>();
+        // Get data from tags
+        doc.name = docStructure.select("DOCNO").text();
 
-            // Get structure from XML
-            Document docStructure = Jsoup.parse(docString, "", Parser.xmlParser());
-            Elements FTags = docStructure.select("F");
-            String city = null;
-            String language = null;
-            for (Element tag : FTags){
-                if (tag.attr("P").equals("104")) city = tag.text();
-                if (tag.attr("P").equals("105")){
-                    String[] languageTag = tag.text().split(" ");
-                    if (languageTag.length > 0) language = languageTag[0].trim();
-                }
+        // get F tags
+        Elements FTags = docStructure.select("F");
+        String city = null;
+        String language = null;
+        for (Element tag : FTags){
+            if (tag.attr("P").equals("104")) city = tag.text();
+            if (tag.attr("P").equals("105")){
+                String[] languageTag = tag.text().split(" ");
+                if (languageTag.length > 0) language = languageTag[0].trim();
             }
-            String title = docStructure.select("TI").text();
-            if (title == null) title = docStructure.select("<HEADLINE>").text();
-
-            // set doc data
-            Doc doc = new Doc();
-            tokens = new LinkedList<>();
-            terms = new LinkedList<>();
-            doc.file = fileName;
-            doc.name = docStructure.select("DOCNO").text();
-            doc.positionInFile = docPositionInFile++;
-            // Get data from tags
-            if (city != null) setDocCity(doc, city);
-            if (language != null && language.length() > 2) doc.language = language.toUpperCase();
-            if (title != null) setDocTitle(doc, title, city != null);
-
-            // tokenize lines and get terms from tokens
-            String[] lines = docStructure.select("TEXT").text().split("\n");
-            docStructure = null;
-            for (String line : lines) tokenize(line);
-            getTerms(doc);
-            docs.add(doc);
         }
-        return docs;
+        if (city != null) setDocCity(doc, city);
+        if (language != null && language.length() > 2) doc.language = language.toUpperCase();
+
+        // get title
+        String title = docStructure.select("TI").text();
+        if (title == null) title = docStructure.select("<HEADLINE>").text();
+        if (title != null) setDocTitle(doc, title, city != null);
+
+        // get date
+        String date = docStructure.select("DATE1").text();
+        if (date != null){
+            // date in from "DAY MONTH YEAR..."
+            String[] words = date.trim().split(" ");
+            if (words.length > 2) {
+                String monthNumber = months.get(words[1]);
+                date = words[2] + "-" + monthNumber + "-" + add_zero(words[0]);
+            }
+            else date = null;
+        } else{
+            date = docStructure.select("DATE").select("P").text();
+            if (date != null) {
+                // date in form "MONTH DAY, YEAR,..."
+                String[] words = date.trim().split(" ");
+                if (words.length > 2) {
+                    String year = words[2];
+                    if (year.charAt(year.length()-1) == ',') year = year.substring(0,year.length()-1);
+                    String day = words[1];
+                    if (day.charAt(day.length()-1) == ',') day = day.substring(0,day.length()-1);
+                    String monthNumber = months.get(words[0]);
+                    date = year + "-" + monthNumber + "-" + add_zero(day);
+                }
+                else date = null;
+            }
+        }
+        if (date != null) doc.date = date;
+
+        // tokenize lines and get terms from tokens
+        String[] lines = docStructure.select("TEXT").text().split("\n");
+        docStructure = null;
+        for (String line : lines) tokenize(line);
+        setTerms(doc);
+        return doc;
     }
 
     /**
@@ -182,7 +195,7 @@ public class Parse {
      */
     private void setDocTitle(Doc doc, String line, boolean gotCity) {
         tokenize(line);
-        getTerms(doc);
+        setTerms(doc);
         boolean skippedCity = false;
         for (String term : terms){
             if (gotCity && !skippedCity) skippedCity = true;
@@ -260,7 +273,11 @@ public class Parse {
                             }
                             String token = stringBuilder.toString().toLowerCase();
                             if (token.length() > 0) {
-                                if (token.equals("between") || token.equals("and") || token.equals("m")
+                                // Do not stop at the following stop words!
+                                if (token.equals("between")
+                                        || token.equals("and")
+                                        || token.equals("m")
+                                        || token.equals("am")
                                         || !stop_words.contains(token)) {
                                     tokens.add(stringBuilder.toString());
                                 }
@@ -281,14 +298,17 @@ public class Parse {
      * Get terms from tokens and set them in doc
      * @param doc to set terms to
      */
-    private void getTerms(Doc doc) {
+    private void setTerms(Doc doc) {
         try {
             while (true) {
                 String term = getTerm(tokens.remove());
                 term = cleanString(term); // need to clean again just in case
-                if (term.length() > 0 && !stop_words.contains(term.toLowerCase()))
+                if (term.length() > 0 && !stop_words.contains(term.toLowerCase())) {
+                    //
 //                    System.out.println(term);
+                    //
                     terms.add(term);
+                }
             }
         } catch (NoSuchElementException | IndexOutOfBoundsException ignored) {}
         doc.terms = terms;
@@ -304,28 +324,35 @@ public class Parse {
      */
     private String getTerm(String token) throws IndexOutOfBoundsException {
         String term = "";
-        if (token.contains("$")) {
-            term = process_dollars(token);
+        if (token.contains("-") || token.toLowerCase().contains("between")) {
+            term = process_range_or_expression(token);
         } else {
-            if (token.contains("-") || token.toLowerCase().contains("between")) {
-                term = process_range_or_expression(token);
+            if (token.contains(":")) {
+                term = process_hour(token);
             } else {
-                if (months.containsKey(token.toLowerCase())) {
-                    term = process_year_month(token);
-                    if (term.length() == 0) {
-                        term = process_day_month(token);
-                    }
+                if (token.contains("$")) {
+                    term = process_dollars(token);
                 } else {
-                    if (Character.isDigit(token.charAt(0))) {
-                        term = process_percentage(token);
+                    if (months.containsKey(token.toLowerCase())) {
+                        term = process_year_month(token);
                         if (term.length() == 0) {
                             term = process_day_month(token);
                         }
-                        if (term.length() == 0) {
-                            term = process_dollars(token);
-                        }
-                        if (term.length() == 0) {
-                            term = process_number(token, false);
+                    } else {
+                        if (Character.isDigit(token.charAt(0))) {
+                            term = process_percentage(token);
+                            if (term.length() == 0) {
+                                term = process_day_month(token);
+                            }
+                            if (term.length() == 0) {
+                                term = process_dollars(token);
+                            }
+                            if (term.length() == 0) {
+                                term = process_hour(token);
+                            }
+                            if (term.length() == 0) {
+                                term = process_number(token, false);
+                            }
                         }
                     }
                 }
@@ -336,12 +363,13 @@ public class Parse {
         boolean upper = false;
         if (Character.isUpperCase(token.charAt(0))) upper = true;
         if (use_stemming) {
-            String stem = stem_collection.get(token.toLowerCase());
-            if (stem == null){
-                stem = stemmer.stem(token);
-                stem_collection.put(token.toLowerCase(), stem);
-            }
-            token = stem;
+//            String stem = stem_collection.get(token.toLowerCase());
+//            if (stem == null){
+//                stem = stemmer.stem(token);
+//                stem_collection.put(token.toLowerCase(), stem);
+//            }
+//            token = stem;
+            token = stemmer.stem(token);
         }
         if (upper) token = token.toUpperCase();
         return token;
@@ -611,6 +639,47 @@ public class Parse {
             if (next_next_next_token.length() != 0) tokens.addFirst(next_next_next_token);
             if (next_next_token.length() != 0) tokens.addFirst(next_next_token);
             if (next_token.length() != 0) tokens.addFirst(next_token);
+            return "";
+        }
+    }
+
+    private String process_hour(String token) {
+        try {
+            token = token.toLowerCase();
+            String cToken = token, next_token = tokens.getFirst().toLowerCase(), hour = "";
+            boolean isTowNum = false, isAM = false, amInToken = false, pmInToken = false;
+            if (cToken.length() > 2) {
+                amInToken = token.substring(token.length() - 2, token.length()).equals("am");
+                pmInToken = token.substring(token.length() - 2, token.length()).equals("pm");
+            }
+            if ((cToken.length() > 2 && amInToken) || next_token.equals("am")) {
+                if (amInToken)
+                    cToken = token.substring(0, token.length() - 2);
+                isAM = true;
+            }
+            if ((cToken.length() > 2 && pmInToken) || next_token.equals("pm"))
+                if (pmInToken)
+                    cToken = token.substring(0, token.length() - 2);
+            if (cToken.length() > 1 && Character.isDigit(cToken.charAt(1)) && cToken.charAt(1) < 3) {
+                hour = cToken.substring(0, 2);
+                isTowNum = true;
+            } else
+                hour = "" + cToken.charAt(0);
+            if (!isAM) {
+                int con = Integer.parseInt(hour) + 12;
+                hour = "" + con;
+            }
+            if (cToken.length() > 3 && cToken.contains(":")) {
+                if (isTowNum && cToken.charAt(2) == ':' && Character.isDigit(cToken.charAt(3)) && Character.getNumericValue(cToken.charAt(3)) < 7 && Character.isDigit(cToken.charAt(4)) && Character.getNumericValue(cToken.charAt(4)) <= 9)
+                    hour = hour + ":" + cToken.substring(3, 5);
+                else if (cToken.charAt(1) == ':')
+                    if (Character.isDigit(cToken.charAt(2)) && Character.getNumericValue(cToken.charAt(2)) < 7 && Character.isDigit(cToken.charAt(3)) && Character.getNumericValue(cToken.charAt(3)) <= 9)
+                        hour = hour + ":" + cToken.substring(2, 4);
+            } else
+                hour = hour + ":00";
+            return hour;
+        }
+        catch (NumberFormatException | NoSuchElementException | IndexOutOfBoundsException e) {
             return "";
         }
     }

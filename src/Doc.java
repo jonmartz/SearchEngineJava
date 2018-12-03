@@ -25,6 +25,10 @@ public class Doc {
      */
     public String city = "";
     /**
+     * Date of doc
+     */
+    public String date = "";
+    /**
      * position of doc in file
      */
     public int positionInFile;

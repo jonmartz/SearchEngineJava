@@ -54,7 +54,7 @@ public class Indexer {
     /**
      * files to write in each temporal posting
      */
-    private int files_per_posting;
+    private int docsPerPosting;
     /**
      * number of groups to separate corpus files to
      */
@@ -184,16 +184,16 @@ public class Indexer {
     /**
      * Creates the index of corpus from corpus that in index path, using the stop-words
      * from the stop-words path. If there's already a completed index in the path, it replaces it.
-     * @param corpus_path path of corpus directory
-     * @param use_stemming true to use stemmer, false otherwise
-     * @param files_per_posting files to write per temporal posting
+     * @param corpusPath path of corpus directory
+     * @param useStemming true to use stemmer, false otherwise
+     * @param filesPerPosting files to write per temporal posting
      */
-    public void createInvertedIndex(String corpus_path, boolean use_stemming, int files_per_posting) throws IOException {
+    public void createInvertedIndex(String corpusPath, boolean useStemming, int filesPerPosting) throws IOException {
 
         long start = System.currentTimeMillis();
 
-        this.files_per_posting = files_per_posting;
-        this.useStemming = use_stemming;
+        this.docsPerPosting = filesPerPosting;
+        this.useStemming = useStemming;
 
         documentIndex = new LinkedBlockingDeque<>();
         dictionary = new ConcurrentHashMap<>();
@@ -219,7 +219,7 @@ public class Indexer {
 
         // Walk through files
         List<String> filePaths = new ArrayList<>();
-        walk(corpus_path, filePaths);
+        walk(corpusPath, filePaths);
         int i = 0;
         for (String filePath : filePaths) {
             tasks[i].filePaths.add(filePath);
@@ -386,7 +386,6 @@ public class Indexer {
 
             long taskStart = System.currentTimeMillis();
 
-//            HashMap<String, String> stem_collection = new HashMap<>(); // save stems along the way
             HashMap<String, LinkedList<String[]>> termsInDocs = new HashMap<>();
             int fileCount = 0;
             int posting_id = id;
@@ -394,20 +393,30 @@ public class Indexer {
             // Index all files
             for (String filePath : filePaths) {
                 fileCount += 1;
-                ArrayList<Doc> docs = null;
+                ArrayList<String> docStrings = null;
 
-                // Get docs with all their terms
-                Parse parser = new Parse(stopWords, citiesDictionary, cityIndex, months,
-                        stemCollection, stopSuffixes, stopPrefixes, useStemming);
                 try {
-                    docs = parser.getParsedDocs(filePath);
+                // each docString is a string containing everything from <DOC> to </DOC>
+                docStrings = ReadFile.read(filePath);
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
-                if (docs == null) continue;
+                if (docStrings == null || docStrings.size() == 0) continue;
 
-                // Add all 'terms in doc' to list of 'terms in docs in file'
-                for (Doc doc : docs) {
+                // get filename
+                String[] splittedPath = filePath.split("\\\\");
+                String fileName = splittedPath[splittedPath.length-1];
+
+                Parse parser = new Parse(stopWords, citiesDictionary, cityIndex, months,
+                        stemCollection, stopSuffixes, stopPrefixes, useStemming);
+
+                int docPositionInFile = 0;
+                for (String docString : docStrings) {
+
+                    Doc doc = parser.getParsedDoc(docString);
+                    doc.file = fileName;
+                    doc.positionInFile = docPositionInFile++;
+
                     LinkedList<String> terms_in_doc = doc.terms;
                     int max_tf = 1;
                     int termPosition = 0;
@@ -460,18 +469,18 @@ public class Indexer {
                     String[] line = {doc.name, doc.file, String.valueOf(doc.positionInFile),
                             String.valueOf(termPosition), String.valueOf(max_tf), doc.city, doc.language};
                     documentIndex.add(String.join("|", line) + "\n");
-                } // finished adding postings for all docs in file
 
-                // if reached max files per posting
-                if (fileCount == files_per_posting) {
-                    fileCount = 0;
-                    try {
-                        write_posting(posting_id, termsInDocs);
-                    } catch (IOException e) {
-                        e.printStackTrace();
+                    // if reached max docs per posting
+                    if (fileCount == docsPerPosting) {
+                        fileCount = 0;
+                        try {
+                            write_posting(posting_id, termsInDocs);
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                        posting_id += taskCount;
+                        termsInDocs = new HashMap<>();
                     }
-                    posting_id += taskCount;
-                    termsInDocs = new HashMap<>();
                 }
             }
             // Write last posting
@@ -482,10 +491,9 @@ public class Indexer {
                     e.printStackTrace();
                 }
             }
+
             long taskTime = System.currentTimeMillis() - taskStart;
             System.out.println("task time: " + taskTime);
-
-//            return new TaskResult(partialCitiesOfDocs, partialDictionary, partialDocumentsInCorpus);
         }
 
         /**
@@ -520,7 +528,7 @@ public class Indexer {
             postingsCount++;
         }
     }
-    
+
     /**
      * Is responsible for merging all the temporal postings. The terms in all these
      * postings are in uppercase, but the merger checks weather the terms shows in the

@@ -21,8 +21,8 @@ public class Main extends Application {
         launch(args);
 
 ////         String corpus_path = "C:\\Users\\Jonathan\\Documents\\BGU\\Semester 5\\Information Retrieval\\corpus";
-//        String corpus_path = "C:\\Users\\Jonathan\\Documents\\BGU\\Semester 5\\Information Retrieval\\miniCorpus";
-////        String corpus_path = "C:\\Users\\Jonathan\\Documents\\BGU\\Semester 5\\Information Retrieval\\Test";
+////        String corpus_path = "C:\\Users\\Jonathan\\Documents\\BGU\\Semester 5\\Information Retrieval\\miniCorpus";
+//        String corpus_path = "C:\\Users\\Jonathan\\Documents\\BGU\\Semester 5\\Information Retrieval\\Test";
 ////        String index_path = "C:\\Users\\Jonathan\\Documents\\BGU\\Semester 5\\Information Retrieval\\index";
 //        String index_path = "C:\\Users\\Jonathan\\Documents\\BGU\\Semester 5\\Information Retrieval\\miniIndex";
 //        String stop_words_path = "C:\\Users\\Jonathan\\Documents\\BGU\\Semester 5\\Information Retrieval\\stop_words.txt";
