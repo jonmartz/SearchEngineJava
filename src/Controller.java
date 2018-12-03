@@ -9,9 +9,8 @@ import javafx.scene.paint.Paint;
 import javafx.scene.text.Text;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
+
+import java.io.*;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -67,7 +66,7 @@ public class Controller implements Initializable {
     /**
      * Number of files to write in every temporal posting
      */
-    private int filesPerPosting = 2;
+    private int filesPerPosting = 1;
     /**
      * for measuring indexing time
      */
@@ -82,7 +81,6 @@ public class Controller implements Initializable {
      */
     @Override
     public void initialize(URL location, ResourceBundle resources) {
-        languageChoicebox.setItems(FXCollections.observableArrayList("English", "Spanish", "Hebrew"));
         statsVisible(false);
         termColumn.setCellValueFactory(new PropertyValueFactory<DictEntry, String>("term"));
         dfColumn.setCellValueFactory(new PropertyValueFactory<DictEntry, String>("df"));
@@ -195,6 +193,7 @@ public class Controller implements Initializable {
             }
             reader.close();
 
+            setLanguages(path);
             commentsBox.setText("Finished!");
             DecimalFormat formatter = new DecimalFormat("#,###");
             docCountValue.setText(formatter.format(documentCount));
@@ -207,6 +206,17 @@ public class Controller implements Initializable {
 //            e.printStackTrace();
             dictionary = null;
             showComment("RED", e.getMessage());
+        }
+    }
+
+    /**
+     * Add languages from the language index to the list of available languages.
+     */
+    private void setLanguages(String path) throws IOException {
+        BufferedReader reader = new BufferedReader(new FileReader(new File(path + "\\languages")));
+        String line = "";
+        while ((line = reader.readLine()) != null){
+            languageChoicebox.getItems().add(line);
         }
     }
 
@@ -255,6 +265,21 @@ public class Controller implements Initializable {
     }
 
     /**
+     * Continuation of the "createIndex" method that the thread triggers after finishing.
+     */
+    private void indexingFinished() {
+        double totalTime = (System.currentTimeMillis() - startingTime)/1000;
+        dictionary = indexer.getDictionary();
+        languageChoicebox.setItems(FXCollections.observableArrayList(indexer.getLanguages()));
+        commentsBox.setText("Finished!");
+        DecimalFormat formatter = new DecimalFormat("#,###");
+        docCountValue.setText(formatter.format(indexer.documentCount));
+        termCountValue.setText(formatter.format(indexer.dictionarySize));
+        totalTimeValue.setText(formatter.format(totalTime) + " seconds");
+        statsVisible(true);
+    }
+
+    /**
      * Show warning and ask for user's confirmation
      * @param text of warning
      * @return user's answer
@@ -274,20 +299,6 @@ public class Controller implements Initializable {
         commentsBox.setFill(Paint.valueOf(color));
         commentsBox.setText(text);
         commentsBox.setVisible(true);
-    }
-
-    /**
-     * Continuation of the "createIndex" method that the thread triggers after finishing.
-     */
-    private void indexingFinished() {
-        double totalTime = (System.currentTimeMillis() - startingTime)/1000;
-        dictionary = indexer.getDictionary();
-        commentsBox.setText("Finished!");
-        DecimalFormat formatter = new DecimalFormat("#,###");
-        docCountValue.setText(formatter.format(indexer.documentCount));
-        termCountValue.setText(formatter.format(indexer.dictionarySize));
-        totalTimeValue.setText(formatter.format(totalTime) + " seconds");
-        statsVisible(true);
     }
 
     /**

@@ -74,7 +74,6 @@ public class Parse {
         this.months = months;
         this.stopPrefixes = stopPrefixes;
         this.stopSuffixes = stopSuffixes;
-        //todo: add language index
 
     }
 
@@ -110,7 +109,10 @@ public class Parse {
             String language = null;
             for (Element tag : FTags){
                 if (tag.attr("P").equals("104")) city = tag.text();
-                if (tag.attr("P").equals("105")) language = tag.text();
+                if (tag.attr("P").equals("105")){
+                    String[] languageTag = tag.text().split(" ");
+                    if (languageTag.length > 0) language = languageTag[0].trim();
+                }
             }
             String title = docStructure.select("TI").text();
             if (title == null) title = docStructure.select("<HEADLINE>").text();
@@ -124,7 +126,7 @@ public class Parse {
             doc.positionInFile = docPositionInFile++;
             // Get data from tags
             if (city != null) setDocCity(doc, city);
-            if (language != null) doc.language = language.toUpperCase();
+            if (language != null && language.length() > 2) doc.language = language.toUpperCase();
             if (title != null) setDocTitle(doc, title, city != null);
 
             // tokenize lines and get terms from tokens

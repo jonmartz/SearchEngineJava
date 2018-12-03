@@ -77,6 +77,16 @@ public class Indexer {
     private ConcurrentHashMap<String, String> stemCollection;
 
     /**
+     * Collection of languages that were found in documents
+     */
+    private SortedSet<String> languages;
+
+
+    public SortedSet<String> getLanguages() {
+        return languages;
+    }
+
+    /**
      * Constructor. Creating a Indexer doesn't start the indexing process
      * @param index_path path of index directory
      * @param stop_words_path path of stop-words file
@@ -189,6 +199,7 @@ public class Indexer {
         dictionary = new ConcurrentHashMap<>();
         cityIndex = new ConcurrentHashMap<>();
         stemCollection = new ConcurrentHashMap<>();
+        languages = new TreeSet<>();
 
         // Create postings dir
         Path directory = Paths.get(index_path);
@@ -230,7 +241,7 @@ public class Indexer {
 
         // Write indexes to disk
         documentCount = documentIndex.size();
-        writeDocumentsIndex();
+        writeDocumentsAndLanguagesIndex();
         writeCityIndex();
 
         // Free up memory for merging
@@ -643,14 +654,24 @@ public class Indexer {
     }
 
     /**
-     * Writes the documents' index to disk
+     * Writes the documents' index to disk.
      */
-    private void writeDocumentsIndex() throws IOException {
+    private void writeDocumentsAndLanguagesIndex() throws IOException {
         String[] documentsPath = {index_path, "documents"};
-        FileWriter fstream = new FileWriter(String.join("\\", documentsPath), true);
-        BufferedWriter out = new BufferedWriter(fstream);
+        BufferedWriter out = new BufferedWriter(new FileWriter(String.join("\\", documentsPath), true));
         out.write("-documentCount=" + (int)documentCount + "\n");
-        for (String line : documentIndex) out.write(line);
+        for (String line : documentIndex){
+            String[] data = line.split("\\|");
+            String language = data[6].trim();
+            if (language.length() > 0) {
+                languages.add(language);
+                out.write(line);
+            }
+        }
+        out.close();
+        String[] languagesPath = {index_path, "languages"};
+        out = new BufferedWriter(new FileWriter(String.join("\\", languagesPath), true));
+        for (String line : languages) out.write(line + "\n");
         out.close();
     }
 }
