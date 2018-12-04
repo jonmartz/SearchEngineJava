@@ -4,8 +4,6 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.util.*;
 import java.util.concurrent.*;
 
-//todo: check if a city is in query
-
 /**
  * Responsible of building the inverted index for a corpus (data-set).
  */
@@ -261,8 +259,6 @@ public class Indexer {
         long time = System.currentTimeMillis() - start;
         System.out.println("total time: " + time);
     }
-
-    // todo: make write blocks smaller
 
     /**
      * Updates a term's data in dictionary, while taking care of the Upper/LowerCase rules.
