@@ -1,3 +1,5 @@
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
@@ -10,8 +12,10 @@ import javafx.scene.paint.Paint;
 import javafx.scene.text.Text;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
+import javafx.util.Duration;
 
 import java.io.*;
+import java.lang.reflect.Field;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -46,6 +50,8 @@ public class Controller implements Initializable {
     public TableColumn dfColumn;
     public TableColumn cfColumn;
     public Button loadDictionaryButton;
+    public Button corpusPathButton;
+    public Button indexPathButton;
 
     /**
      * path of the corpus directory
@@ -84,19 +90,6 @@ public class Controller implements Initializable {
     }
 
     /**
-     * Opens a "browse" window for the user to choose a file.
-     * @param title of browse window
-     * @return path of file chosen
-     */
-    private String getFilePath(String title) {
-        FileChooser fileChooser = new FileChooser();
-        fileChooser.setTitle(title);
-        File file = fileChooser.showOpenDialog(null);
-        if (file != null) return file.getAbsolutePath();
-        return null;
-    }
-
-    /**
      * Opens a "browse" window for the user to choose a directory.
      * @param title of browse window
      * @return path of directory chosen
@@ -116,6 +109,7 @@ public class Controller implements Initializable {
         String path = getDirectoryPath("Select corpus directory");
         if (path != null){
             corpusPath = path;
+            corpusPathButton.setTooltip(new Tooltip(corpusPath));
             corpusPathOKText.setVisible(true);
             checkAllFields();
         }
@@ -128,6 +122,7 @@ public class Controller implements Initializable {
         String path  = getDirectoryPath("Select index directory");
         if (path != null){
             indexPath = path;
+            indexPathButton.setTooltip(new Tooltip(indexPath));
             indexPathOKText.setVisible(true);
             checkAllFields();
             loadDictionaryButton.setDisable(false);

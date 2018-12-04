@@ -41,13 +41,13 @@
                             </rowConstraints>
                             <children>
                                 <Text fill="#646464" strokeType="OUTSIDE" strokeWidth="0.0" text="Select paths:" />
-                                <Button mnemonicParsing="false" onAction="#getCorpusPath" prefHeight="25.0" prefWidth="139.0" text="Corpus path" GridPane.rowIndex="2" />
+                                <Button fx:id="corpusPathButton" mnemonicParsing="false" onAction="#getCorpusPath" prefHeight="25.0" prefWidth="139.0" text="Corpus path" GridPane.rowIndex="2" />
                                 <Text fx:id="corpusPathOKText" fill="GREEN" text="OK" visible="false" GridPane.columnIndex="1" GridPane.rowIndex="2">
                                     <GridPane.margin>
                                         <Insets left="5.0" />
                                     </GridPane.margin>
                                 </Text>
-                                <Button mnemonicParsing="false" onAction="#getIndexPath" prefHeight="25.0" prefWidth="139.0" text="Index path" GridPane.rowIndex="1" />
+                                <Button fx:id="indexPathButton" mnemonicParsing="false" onAction="#getIndexPath" prefHeight="25.0" prefWidth="139.0" text="Index path" GridPane.rowIndex="1" />
                                 <Text fx:id="indexPathOKText" fill="GREEN" text="OK" visible="false" GridPane.columnIndex="1" GridPane.rowIndex="1">
                                     <GridPane.margin>
                                         <Insets left="5.0" />
