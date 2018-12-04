@@ -465,9 +465,9 @@ public class Indexer {
                         docEntry[2] = "t";
                     }
                     // Add document row to the document index:
-                    // docname|file|positionInFile|termCount|maxTf|city|language
+                    // docname|file|positionInFile|termCount|maxTf|city|language|date
                     String[] line = {doc.name, doc.file, String.valueOf(doc.positionInFile),
-                            String.valueOf(termPosition), String.valueOf(max_tf), doc.city, doc.language};
+                            String.valueOf(termPosition), String.valueOf(max_tf), doc.city, doc.language, doc.date};
                     documentIndex.add(String.join("|", line) + "\n");
 
                     // if reached max docs per posting
@@ -557,8 +557,9 @@ public class Indexer {
         private void mergePostings() throws IOException {
             String chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
             ArrayList<BufferedReader> postings = new ArrayList<>();
-            for (int id = 0; id < postingsCount; id++){
-                String path = index_path + "\\postings\\temp\\" + id;
+            ArrayList<String> paths = new ArrayList<>();
+            walk(index_path + "\\postings\\temp\\", paths);
+            for (String path : paths){
                 BufferedReader posting = new BufferedReader(new FileReader(new File(path)));
                 postings.add(posting);
             }
@@ -651,6 +652,11 @@ public class Indexer {
         SortedSet<String> terms = new TreeSet<>(dictionary.keySet());
         for (String term : terms) {
             long[] term_data = dictionary.get(term);
+
+            //
+            System.out.println(term + "\t" + term_data[1]);
+            //
+
             String[] line = new String[term_data.length + 1];
             line[0] = term;
             line[1] = Long.toString(term_data[0]);
@@ -667,14 +673,15 @@ public class Indexer {
     private void writeDocumentsAndLanguagesIndex() throws IOException {
         String[] documentsPath = {index_path, "documents"};
         BufferedWriter out = new BufferedWriter(new FileWriter(String.join("\\", documentsPath), true));
+        SortedSet<String> lines = new TreeSet<>(documentIndex);
         out.write("-documentCount=" + (int)documentCount + "\n");
-        for (String line : documentIndex){
+        for (String line : lines){
             String[] data = line.split("\\|");
             String language = data[6].trim();
             if (language.length() > 0) {
                 languages.add(language);
-                out.write(line);
             }
+            out.write(line);
         }
         out.close();
         String[] languagesPath = {index_path, "languages"};

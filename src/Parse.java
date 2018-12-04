@@ -90,59 +90,9 @@ public class Parse {
         terms = new LinkedList<>();
 
 
-        // Get structure from XML
+        // Get structure from XML text and set doc's fields
         Document docStructure = Jsoup.parse(docString, "", Parser.xmlParser());
-
-
-        // Get data from tags
-        doc.name = docStructure.select("DOCNO").text();
-
-        // get F tags
-        Elements FTags = docStructure.select("F");
-        String city = null;
-        String language = null;
-        for (Element tag : FTags){
-            if (tag.attr("P").equals("104")) city = tag.text();
-            if (tag.attr("P").equals("105")){
-                String[] languageTag = tag.text().split(" ");
-                if (languageTag.length > 0) language = languageTag[0].trim();
-            }
-        }
-        if (city != null) setDocCity(doc, city);
-        if (language != null && language.length() > 2) doc.language = language.toUpperCase();
-
-        // get title
-        String title = docStructure.select("TI").text();
-        if (title == null) title = docStructure.select("<HEADLINE>").text();
-        if (title != null) setDocTitle(doc, title, city != null);
-
-        // get date
-        String date = docStructure.select("DATE1").text();
-        if (date != null){
-            // date in from "DAY MONTH YEAR..."
-            String[] words = date.trim().split(" ");
-            if (words.length > 2) {
-                String monthNumber = months.get(words[1]);
-                date = words[2] + "-" + monthNumber + "-" + add_zero(words[0]);
-            }
-            else date = null;
-        } else{
-            date = docStructure.select("DATE").select("P").text();
-            if (date != null) {
-                // date in form "MONTH DAY, YEAR,..."
-                String[] words = date.trim().split(" ");
-                if (words.length > 2) {
-                    String year = words[2];
-                    if (year.charAt(year.length()-1) == ',') year = year.substring(0,year.length()-1);
-                    String day = words[1];
-                    if (day.charAt(day.length()-1) == ',') day = day.substring(0,day.length()-1);
-                    String monthNumber = months.get(words[0]);
-                    date = year + "-" + monthNumber + "-" + add_zero(day);
-                }
-                else date = null;
-            }
-        }
-        if (date != null) doc.date = date;
+        setDocDetails(doc, docStructure);
 
         // tokenize lines and get terms from tokens
         String[] lines = docStructure.select("TEXT").text().split("\n");
@@ -150,6 +100,60 @@ public class Parse {
         for (String line : lines) tokenize(line);
         setTerms(doc);
         return doc;
+    }
+
+    /**
+     * Get all doc details from XML structure and set them to doc's fields
+     * @param doc to set fields to
+     * @param docStructure to get details from
+     */
+    private void setDocDetails(Doc doc, Document docStructure) {
+        doc.name = docStructure.select("DOCNO").text();
+        Elements FTags = docStructure.select("F");
+        String city = "";
+        String language = "";
+        for (Element tag : FTags){
+            if (tag.attr("P").equals("104")) city = tag.text();
+            if (tag.attr("P").equals("105")){
+                String[] languageTag = tag.text().split(" ");
+                if (languageTag.length > 0) language = languageTag[0].trim();
+            }
+        }
+        if (city.length() > 0 && Character.isAlphabetic(city.charAt(0))) setDocCity(doc, city);
+        if (language.length() > 0 && language.length() > 2) doc.language = language.toUpperCase();
+
+        // get title
+        String title = docStructure.select("TI").text();
+        if (title == null) title = docStructure.select("<HEADLINE>").text();
+        if (title != null) setDocTitle(doc, title, city.length() > 0);
+
+        // get date
+        String date = docStructure.select("DATE1").text();
+        if (date.length() > 0){
+            // date in from "DAY MONTH YEAR..."
+            String[] words = date.trim().split(" ");
+            if (words.length > 2) {
+                String monthNumber = months.get(words[1].toLowerCase());
+                date = words[2] + "-" + monthNumber + "-" + add_zero(words[0]);
+            }
+            else date = "";
+        } else{
+            date = docStructure.select("DATE").select("P").text();
+            if (date.length() > 0) {
+                // date in form "MONTH DAY, YEAR,..."
+                String[] words = date.trim().split(" ");
+                if (words.length > 2) {
+                    String year = words[2];
+                    if (year.charAt(year.length()-1) == ',') year = year.substring(0,year.length()-1);
+                    String day = words[1];
+                    if (day.charAt(day.length()-1) == ',') day = day.substring(0,day.length()-1);
+                    String monthNumber = months.get(words[0].toLowerCase());
+                    date = year + "-" + monthNumber + "-" + add_zero(day);
+                }
+                else date = "";
+            }
+        }
+        if (date.length() > 0) doc.date = date;
     }
 
     /**
@@ -646,40 +650,56 @@ public class Parse {
     private String process_hour(String token) {
         try {
             token = token.toLowerCase();
-            String cToken = token, next_token = tokens.getFirst().toLowerCase(), hour = "";
-            boolean isTowNum = false, isAM = false, amInToken = false, pmInToken = false;
-            if (cToken.length() > 2) {
+            String next_token = tokens.getFirst().toLowerCase(), hour = "";
+            boolean isAM = false, amInToken = false, pmInToken = false;
+            if (token.length() > 2) {
                 amInToken = token.substring(token.length() - 2, token.length()).equals("am");
                 pmInToken = token.substring(token.length() - 2, token.length()).equals("pm");
             }
-            if ((cToken.length() > 2 && amInToken) || next_token.equals("am")) {
+            if ((token.length() > 2 && amInToken) || next_token.equals("am")) {
                 if (amInToken)
-                    cToken = token.substring(0, token.length() - 2);
+                    token = token.substring(0, token.length() - 2);
                 isAM = true;
             }
-            if ((cToken.length() > 2 && pmInToken) || next_token.equals("pm"))
+            else if ((token.length() > 2 && pmInToken) || next_token.equals("pm")) {
                 if (pmInToken)
-                    cToken = token.substring(0, token.length() - 2);
-            if (cToken.length() > 1 && Character.isDigit(cToken.charAt(1)) && cToken.charAt(1) < 3) {
-                hour = cToken.substring(0, 2);
-                isTowNum = true;
-            } else
-                hour = "" + cToken.charAt(0);
-            if (!isAM) {
-                int con = Integer.parseInt(hour) + 12;
-                hour = "" + con;
+                    token = token.substring(0, token.length() - 2);
             }
-            if (cToken.length() > 3 && cToken.contains(":")) {
-                if (isTowNum && cToken.charAt(2) == ':' && Character.isDigit(cToken.charAt(3)) && Character.getNumericValue(cToken.charAt(3)) < 7 && Character.isDigit(cToken.charAt(4)) && Character.getNumericValue(cToken.charAt(4)) <= 9)
-                    hour = hour + ":" + cToken.substring(3, 5);
-                else if (cToken.charAt(1) == ':')
-                    if (Character.isDigit(cToken.charAt(2)) && Character.getNumericValue(cToken.charAt(2)) < 7 && Character.isDigit(cToken.charAt(3)) && Character.getNumericValue(cToken.charAt(3)) <= 9)
-                        hour = hour + ":" + cToken.substring(2, 4);
-            } else
-                hour = hour + ":00";
-            return hour;
-        }
-        catch (NumberFormatException | NoSuchElementException | IndexOutOfBoundsException e) {
+            else {
+                return "";
+            }
+            int hours, minutes;
+            if (token.length() > 3 && token.contains(":")) {
+                try {
+                    hours = Integer.parseInt(token.split(":")[0]);
+                    minutes = Integer.parseInt(token.split(":")[1]);
+                    if (hours <= 12 && minutes <= 60) {
+                        if (!isAM)
+                            hours = hours + 12;
+                        String min = Integer.toString(minutes);
+                        if(min.equals("0"))
+                            min += '0';
+                        String hourS = Integer.toString(hours);
+                        if(hours <10)
+                            hourS = '0' + hourS;
+                        token = hourS + ':' + min;
+                        return token;
+                    }
+                } catch (NumberFormatException | NoSuchElementException | IndexOutOfBoundsException e) {
+                    return "";
+                }
+            }
+            try {
+                hours = Integer.parseInt(token);
+                if (hours <= 12)
+                    if (!isAM)
+                        hours = hours + 12;
+                token = Integer.toString(hours) + ":00";
+                return token;
+            } catch (NumberFormatException | NoSuchElementException | IndexOutOfBoundsException e) {
+                return "";
+            }
+        } catch (NumberFormatException | NoSuchElementException | IndexOutOfBoundsException e) {
             return "";
         }
     }
