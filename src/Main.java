@@ -27,10 +27,9 @@ public class Main extends Application {
 ////        String corpus_path = "C:\\Users\\Jonathan\\Documents\\BGU\\Semester 5\\Information Retrieval\\Test";
 ////        String index_path = "C:\\Users\\Jonathan\\Documents\\BGU\\Semester 5\\Information Retrieval\\index";
 //        String index_path = "C:\\Users\\Jonathan\\Documents\\BGU\\Semester 5\\Information Retrieval\\miniIndex";
-//        String stop_words_path = "C:\\Users\\Jonathan\\Documents\\BGU\\Semester 5\\Information Retrieval\\stop_words.txt";
 //
 //        try {
-//            Indexer indexer = new Indexer(index_path, stop_words_path);
+//            Indexer indexer = new Indexer(index_path);
 //            indexer.createInvertedIndex(corpus_path, false, 1);
 //        } catch (IOException e) {
 //            e.printStackTrace();

@@ -1,6 +1,7 @@
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
+import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.*;
@@ -27,7 +28,6 @@ public class Controller implements Initializable {
 
     @FXML
     public Text corpusPathOKText;
-    public Text stopWordsPathOKText;
     public Text indexPathOKText;
     public CheckBox useStemming;
     public Button createIndexButton;
@@ -51,10 +51,6 @@ public class Controller implements Initializable {
      * path of the corpus directory
      */
     private String corpusPath;
-    /**
-     * path of the stop-words file
-     */
-    private String stopWordsPath;
     /**
      * path of the index directory
      */
@@ -126,18 +122,6 @@ public class Controller implements Initializable {
     }
 
     /**
-     * Gets the path of the stop-words file
-     */
-    public void getStopWordsPath() {
-        String path = getFilePath("Select stop-words file");
-        if (path != null){
-            stopWordsPath = path;
-            stopWordsPathOKText.setVisible(true);
-            checkAllFields();
-        }
-    }
-
-    /**
      * Gets the path of the index directory
      */
     public void getIndexPath() {
@@ -151,11 +135,11 @@ public class Controller implements Initializable {
     }
 
     /**
-     * Checks if the index and corpus folders and the stop-words file have been chosen and if they do
+     * Checks if the index and corpus folders have been chosen and if they do
      * it enables the "Create index" button
      */
     private void checkAllFields() {
-        if (corpusPath != null && stopWordsPath != null && indexPath != null) createIndexButton.setDisable(false);
+        if (corpusPath != null && indexPath != null) createIndexButton.setDisable(false);
     }
 
     /**
@@ -222,7 +206,7 @@ public class Controller implements Initializable {
 
     /**
      * Creates the index of corpus from corpus that in index path, using the stop-words
-     * from the stop-words path. If there's already a completed index in the path, it replaces it.
+     * from the corpus path. If there's already a completed index in the path, it replaces it.
      * If "use stemming" is checked, will create the index in the "withStemming" path, else from
      * the "withoutStemming" path.
      */
@@ -239,7 +223,7 @@ public class Controller implements Initializable {
                 if (getResultFromWarning(text) == ButtonType.NO) return;
             }
 
-            indexer = new Indexer(indexPath, stopWordsPath);
+            indexer = new Indexer(indexPath);
             dictionary = null;
 
             // Modify GUI

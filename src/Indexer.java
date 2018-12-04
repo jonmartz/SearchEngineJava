@@ -89,13 +89,10 @@ public class Indexer {
     /**
      * Constructor. Creating a Indexer doesn't start the indexing process
      * @param index_path path of index directory
-     * @param stop_words_path path of stop-words file
-     * @throws IOException if IO fails
      */
-    public Indexer(String index_path, String stop_words_path) throws IOException {
+    public Indexer(String index_path) throws IOException {
         this.index_path = index_path;
         this.citiesDictionary = Cities.get_cities_dictionary();
-        this.stopWords = getStopWords(stop_words_path);
         this.months = getMonths();
         this.stopSuffixes = getStopSuffixes();
         this.stopPrefixes = getStopPrefixes();
@@ -195,6 +192,8 @@ public class Indexer {
         this.docsPerPosting = filesPerPosting;
         this.useStemming = useStemming;
 
+        String stopWordsName = "stop_words.txt";
+        stopWords = getStopWords(corpusPath, stopWordsName);
         documentIndex = new LinkedBlockingDeque<>();
         dictionary = new ConcurrentHashMap<>();
         cityIndex = new ConcurrentHashMap<>();
@@ -222,6 +221,7 @@ public class Indexer {
         walk(corpusPath, filePaths);
         int i = 0;
         for (String filePath : filePaths) {
+            if (filePath.equals(stopWordsName)) continue;
             tasks[i].filePaths.add(filePath);
             i++;
             if (i == taskCount) i = 0;
@@ -298,10 +298,12 @@ public class Indexer {
 
     /**
      * Gets a text with stop-words and returns a set of them
-     * @param path of stop-words file
-     * @return stop-words set
+     * @param corpusPath path of corpus
+     * @param stopWordsName name of file
+     * @return stop words set
      */
-    private static HashSet<String> getStopWords(String path) throws IOException {
+    private static HashSet<String> getStopWords(String corpusPath, String stopWordsName) throws IOException {
+        String path = corpusPath + "\\" + stopWordsName;
         BufferedReader reader = new BufferedReader(new FileReader(new File(path)));
         HashSet<String> stopWords = new HashSet<>();
         String line;
