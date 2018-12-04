@@ -652,11 +652,6 @@ public class Indexer {
         SortedSet<String> terms = new TreeSet<>(dictionary.keySet());
         for (String term : terms) {
             long[] term_data = dictionary.get(term);
-
-            //
-            System.out.println(term + "\t" + term_data[1]);
-            //
-
             String[] line = new String[term_data.length + 1];
             line[0] = term;
             line[1] = Long.toString(term_data[0]);
