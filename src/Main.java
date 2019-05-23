@@ -17,5 +17,7 @@ public class Main extends Application {
 
     public static void main(String[] args) {
         launch(args);
+        int v = 3+1;
+        System.out.println(v);
     }
 }
