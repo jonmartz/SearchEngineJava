@@ -1,6 +1,9 @@
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
+import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.*;
@@ -9,8 +12,10 @@ import javafx.scene.paint.Paint;
 import javafx.scene.text.Text;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
+import javafx.util.Duration;
 
 import java.io.*;
+import java.lang.reflect.Field;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -27,7 +32,6 @@ public class Controller implements Initializable {
 
     @FXML
     public Text corpusPathOKText;
-    public Text stopWordsPathOKText;
     public Text indexPathOKText;
     public CheckBox useStemming;
     public Button createIndexButton;
@@ -46,15 +50,13 @@ public class Controller implements Initializable {
     public TableColumn dfColumn;
     public TableColumn cfColumn;
     public Button loadDictionaryButton;
+    public Button corpusPathButton;
+    public Button indexPathButton;
 
     /**
      * path of the corpus directory
      */
     private String corpusPath;
-    /**
-     * path of the stop-words file
-     */
-    private String stopWordsPath;
     /**
      * path of the index directory
      */
@@ -88,19 +90,6 @@ public class Controller implements Initializable {
     }
 
     /**
-     * Opens a "browse" window for the user to choose a file.
-     * @param title of browse window
-     * @return path of file chosen
-     */
-    private String getFilePath(String title) {
-        FileChooser fileChooser = new FileChooser();
-        fileChooser.setTitle(title);
-        File file = fileChooser.showOpenDialog(null);
-        if (file != null) return file.getAbsolutePath();
-        return null;
-    }
-
-    /**
      * Opens a "browse" window for the user to choose a directory.
      * @param title of browse window
      * @return path of directory chosen
@@ -120,19 +109,8 @@ public class Controller implements Initializable {
         String path = getDirectoryPath("Select corpus directory");
         if (path != null){
             corpusPath = path;
+            corpusPathButton.setTooltip(new Tooltip(corpusPath));
             corpusPathOKText.setVisible(true);
-            checkAllFields();
-        }
-    }
-
-    /**
-     * Gets the path of the stop-words file
-     */
-    public void getStopWordsPath() {
-        String path = getFilePath("Select stop-words file");
-        if (path != null){
-            stopWordsPath = path;
-            stopWordsPathOKText.setVisible(true);
             checkAllFields();
         }
     }
@@ -144,6 +122,7 @@ public class Controller implements Initializable {
         String path  = getDirectoryPath("Select index directory");
         if (path != null){
             indexPath = path;
+            indexPathButton.setTooltip(new Tooltip(indexPath));
             indexPathOKText.setVisible(true);
             checkAllFields();
             loadDictionaryButton.setDisable(false);
@@ -151,11 +130,11 @@ public class Controller implements Initializable {
     }
 
     /**
-     * Checks if the index and corpus folders and the stop-words file have been chosen and if they do
+     * Checks if the index and corpus folders have been chosen and if they do
      * it enables the "Create index" button
      */
     private void checkAllFields() {
-        if (corpusPath != null && stopWordsPath != null && indexPath != null) createIndexButton.setDisable(false);
+        if (corpusPath != null && indexPath != null) createIndexButton.setDisable(false);
     }
 
     /**
@@ -222,7 +201,7 @@ public class Controller implements Initializable {
 
     /**
      * Creates the index of corpus from corpus that in index path, using the stop-words
-     * from the stop-words path. If there's already a completed index in the path, it replaces it.
+     * from the corpus path. If there's already a completed index in the path, it replaces it.
      * If "use stemming" is checked, will create the index in the "withStemming" path, else from
      * the "withoutStemming" path.
      */
@@ -239,7 +218,7 @@ public class Controller implements Initializable {
                 if (getResultFromWarning(text) == ButtonType.NO) return;
             }
 
-            indexer = new Indexer(indexPath, stopWordsPath);
+            indexer = new Indexer(indexPath);
             dictionary = null;
 
             // Modify GUI

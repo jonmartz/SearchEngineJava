@@ -34,35 +34,29 @@
                                 <RowConstraints maxHeight="26.0" minHeight="10.0" prefHeight="22.0" vgrow="SOMETIMES" />
                                 <RowConstraints maxHeight="45.0" minHeight="10.0" prefHeight="35.0" vgrow="SOMETIMES" />
                                 <RowConstraints maxHeight="45.0" minHeight="10.0" prefHeight="33.0" vgrow="SOMETIMES" />
-                                <RowConstraints maxHeight="45.0" minHeight="10.0" prefHeight="35.0" />
                                 <RowConstraints maxHeight="45.0" minHeight="10.0" prefHeight="30.0" />
                                 <RowConstraints maxHeight="45.0" minHeight="10.0" prefHeight="30.0" />
                                 <RowConstraints maxHeight="45.0" minHeight="10.0" prefHeight="30.0" />
+                        <RowConstraints />
                             </rowConstraints>
                             <children>
                                 <Text fill="#646464" strokeType="OUTSIDE" strokeWidth="0.0" text="Select paths:" />
-                                <Button mnemonicParsing="false" onAction="#getCorpusPath" prefHeight="25.0" prefWidth="139.0" text="Corpus path" GridPane.rowIndex="2" />
+                                <Button fx:id="corpusPathButton" mnemonicParsing="false" onAction="#getCorpusPath" prefHeight="25.0" prefWidth="139.0" text="Corpus path" GridPane.rowIndex="2" />
                                 <Text fx:id="corpusPathOKText" fill="GREEN" text="OK" visible="false" GridPane.columnIndex="1" GridPane.rowIndex="2">
                                     <GridPane.margin>
                                         <Insets left="5.0" />
                                     </GridPane.margin>
                                 </Text>
-                                <Button mnemonicParsing="false" onAction="#getStopWordsPath" prefHeight="25.0" prefWidth="139.0" text="Stop-words path" GridPane.rowIndex="3" />
-                                <Text fx:id="stopWordsPathOKText" fill="GREEN" text="OK" visible="false" GridPane.columnIndex="1" GridPane.rowIndex="3">
-                                    <GridPane.margin>
-                                        <Insets left="5.0" />
-                                    </GridPane.margin>
-                                </Text>
-                                <Button mnemonicParsing="false" onAction="#getIndexPath" prefHeight="25.0" prefWidth="139.0" text="Index path" GridPane.rowIndex="1" />
+                                <Button fx:id="indexPathButton" mnemonicParsing="false" onAction="#getIndexPath" prefHeight="25.0" prefWidth="139.0" text="Index path" GridPane.rowIndex="1" />
                                 <Text fx:id="indexPathOKText" fill="GREEN" text="OK" visible="false" GridPane.columnIndex="1" GridPane.rowIndex="1">
                                     <GridPane.margin>
                                         <Insets left="5.0" />
                                     </GridPane.margin>
                                 </Text>
-                                <CheckBox fx:id="useStemming" contentDisplay="RIGHT" mnemonicParsing="false" text="Use stemming" GridPane.rowIndex="4" />
-                                <Button fx:id="createIndexButton" disable="true" mnemonicParsing="false" onAction="#createIndex" prefHeight="25.0" prefWidth="149.0" style="-fx-background-color: #2A5058;" textFill="WHITE" text="Create Index" GridPane.rowIndex="6" />
+                                <CheckBox fx:id="useStemming" contentDisplay="RIGHT" mnemonicParsing="false" text="Use stemming" GridPane.rowIndex="3" />
+                                <Button fx:id="createIndexButton" disable="true" mnemonicParsing="false" onAction="#createIndex" prefHeight="25.0" prefWidth="149.0" style="-fx-background-color: #2A5058;" text="Create Index" textFill="WHITE" GridPane.rowIndex="5" />
                                 <Separator orientation="VERTICAL" prefHeight="200.0" GridPane.columnIndex="2" GridPane.rowSpan="7" />
-                                <Button fx:id="loadDictionaryButton" disable="true" mnemonicParsing="false" onAction="#loadDictionary" prefHeight="25.0" prefWidth="125.0" style="-fx-background-color: #2A5058;"  textFill="WHITE" text="Load Dictionary" GridPane.rowIndex="5" />
+                                <Button fx:id="loadDictionaryButton" disable="true" mnemonicParsing="false" onAction="#loadDictionary" prefHeight="25.0" prefWidth="125.0" style="-fx-background-color: #2A5058;" text="Load Dictionary" textFill="WHITE" GridPane.rowIndex="4" />
                             </children>
                             <padding>
                                 <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
@@ -74,11 +68,6 @@
             <top>
                 <MenuBar BorderPane.alignment="CENTER">
                     <menus>
-                        <Menu mnemonicParsing="false" text="Options">
-                            <items>
-                                <MenuItem mnemonicParsing="false" text="Close" />
-                            </items>
-                        </Menu>
                         <Menu mnemonicParsing="false" text="Language">
                             <items>
                                 <MenuItem mnemonicParsing="false">
@@ -90,7 +79,10 @@
                         </Menu>
                         <Menu mnemonicParsing="false" text="Help">
                             <items>
-                                <MenuItem mnemonicParsing="false" text="About" />
+                                <MenuItem mnemonicParsing="false">
+                           <graphic>
+                              <Text strokeType="OUTSIDE" strokeWidth="0.0" text="See &quot;readme.txt&quot; for instructions " />
+                           </graphic></MenuItem>
                             </items>
                         </Menu>
                     </menus>
